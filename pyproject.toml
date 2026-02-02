@@ -1,0 +1,11 @@
+[dependency-groups]
+dev = [
+    "jupyter",
+    "lab",
+    "matplotlib",
+    "numpy",
+    "pandas",
+    "python-dotenv",
+    "seaborn",
+    "torch",
+]

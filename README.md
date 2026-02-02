@@ -27,3 +27,7 @@ Viruses Properties Data Entries:
 1. Sequence Reference - [Uniprot Link](https://www.uniprot.org/uniprotkb/P0DTC2/entry)
 2. Isoelectric Reference - [PMC Link](https://pmc.ncbi.nlm.nih.gov/articles/PMC8401476/)
 3. Physicochemical - [PMC Link](https://pmc.ncbi.nlm.nih.gov/articles/PMC7283733/#elps7215-sec-0040)
+
+## Installation & Usage
+
+Please install `uv` pack manager [UV DOCS](https://docs.astral.sh/uv/).
