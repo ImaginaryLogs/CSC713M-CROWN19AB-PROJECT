@@ -1,10 +1,11 @@
 # CoV-AbDab Machine Learning Model
 
-> CSC713M (MSINTSY) T2 2025-2026
+![Static Badge](https://img.shields.io/badge/AY2527_T2-CSC713M-blue?style=plastic) 	[![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=fff)](#)
 
 A machine learning model project designed to identifying neutralizing and binding status of antibody proteins.
 
-By the Alphafold Cooking Lab Group (G01 MSINTSY)
+| <div><img src="./docs/assets/waltuh.png" style="width:100px"/></div> | By the **Alphafold Cooking Lab Group** (G01)
+|---|--- |
 
 ## Proposal
 
