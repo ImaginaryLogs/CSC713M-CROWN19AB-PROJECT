@@ -1,1 +1,3 @@
 data/*
+src/03_preprocessing/data/*.csv
+src/04_model_selection_training/data/*.csv

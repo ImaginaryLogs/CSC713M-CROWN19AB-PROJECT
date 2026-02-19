@@ -5,7 +5,7 @@
 A machine learning model project designed to identifying neutralizing and binding status of antibody proteins.
 
 | <div><img src="./docs/assets/waltuh.png" style="width:100px"/></div> | By the **Alphafold Cooking Lab Group** (G01)
-|---|--- |
+|---|----|
 
 ## Proposal
 
