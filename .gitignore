@@ -1,3 +1,7 @@
 data/*
 src/03_preprocessing/data/*.csv
 src/04_model_selection_training/data/*.csv
+.env
+__pycache__
+src/pipelines/p03_preprocessing/data/
+src/pipelines/p04_model_selection_training/data/

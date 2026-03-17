@@ -1,0 +1,8 @@
+method: grid
+parameters:
+  model_type:
+    values: ["rf", "svm", ""]
+  data_combo:
+    values: ["genetic", "physchem", "genetic+physchem", "all"]
+  lr:
+    values: [0.001, 0.01, 0.1]
