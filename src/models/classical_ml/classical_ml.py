@@ -9,8 +9,9 @@ from sklearn.naive_bayes import GaussianNB
 from typing import Union
 import numpy as np
 import types
-import etc.config
-
+import joblib
+from etc import constants_training
+from pathlib import Path
 from src.utils.logging_module import get_logging
 
 logger = get_logging(__name__)
@@ -35,51 +36,66 @@ class ClassicMlClassifer:
         
         if self.scaler_cls is not None:
             steps.append(("scaler", self.scaler_cls()))
+            
         steps.append(("cls", classifier_model(**kwargs)))
         
         self.model = Pipeline(steps)
         
     def __str__(self) -> str:
-        return f"Classical ML: {self.__class__.__name__}"
+        return f"Classical ML: {self.model.named_steps['cls'].__class__.__name__}"
 
-    def fit(self, X: np.ndarray, y: np.ndarray, sample_weight: np.ndarray | None) -> None:
+    def fit(self, X: np.ndarray, y: np.ndarray, sample_weight: np.ndarray | None = None) -> None:
         fit_kwargs = {}
-        if sample_weight is not None:
+        if sample_weight is not None and self.support_sample_weight:
             if self.support_sample_weight:
-                fit_kwargs["clf__sample_weight"] = sample_weight
+                fit_kwargs["cls__sample_weight"] = sample_weight
             
         self.model.fit(X, y, **fit_kwargs)
     
     def predict(self, X: np.ndarray) -> Union[np.ndarray, tuple[np.ndarray, np.ndarray]]:
         return self.model.predict(X) 
     
-    def save(self, name: str | None = None) -> None:
-        
-        path = str()
-        print(f"Model \"{name}\" saved to {path}")
+    def predict_proba(self, X: np.ndarray) -> np.ndarray:
+        return self.model.predict_proba(X)
     
-    def load(self, name: str | None = None) -> None:
-        pass
+    def save(self, directory: str | Path | None = None , name: str | None = None) -> None:
+        save_dir = Path(directory) if directory else constants_training.ART_MODELS_DIR
+        
+        save_dir.mkdir(parents=True, exist_ok=True)
+        
+        ml_name = name or self.__class__.__name__
+        path = str(save_dir / f"{ml_name}.joblib")
+        joblib.dump(self.model, path)
+        logger.info(f"Model \"{name}\" saved to {path}")
+    
+    @classmethod   
+    def load(cls, name: str | None = None) -> None:
+        model_name = name or cls.__name__.lower()
+        path = constants_training.ART_MODELS_DIR / f"{model_name}.joblib"
+        if not path.exists(): return None
+        instance = cls.__new__(cls)
+        instance.model = joblib.load(str(path))
+        logger.info(f"Model loaded from {path}")
 
 class KNearestNeighbors(ClassicMlClassifer):
-    def __init__(self, random_state: int | None = None, **kwargs: object) -> None:
+    def __init__(self, random_state: int | None = 42, **kwargs: object) -> None:
         super().__init__(KNeighborsClassifier, **kwargs)
         self.support_sample_weight = False
         
 class SupportVectorMachine(ClassicMlClassifer):
-    def __init__(self, random_state: int | None = None, **kwargs: object) -> None:
-        super().__init__(SVC, **kwargs)
+    def __init__(self, random_state: int | None = 42, **kwargs: object) -> None:
+        super().__init__(SVC,random_state=random_state, probability=True, **kwargs)
         
 class RandomForest(ClassicMlClassifer):
-    def __init__(self, random_state: int | None = None, **kwargs: object) -> None:
-        super().__init__(RandomForestClassifier, **kwargs)
+    def __init__(self, random_state: int | None = 42, **kwargs: object) -> None:
+        super().__init__(RandomForestClassifier, random_state=random_state, **kwargs)
 
 class LogisticRegression(ClassicMlClassifer):
-    def __init__(self, random_state: int | None = None, **kwargs: object) -> None:
-        super().__init__(ScikitLR, **kwargs)
+    def __init__(self, random_state: int | None = 42, **kwargs: object) -> None:
+        super().__init__(ScikitLR, random_state=random_state, **kwargs)
 
 class NaiveBayes(ClassicMlClassifer):
-    def __init__(self, random_state: int | None = None, **kwargs: object) -> None:
+    def __init__(self, random_state: int | None = 42, **kwargs: object) -> None:
         super().__init__(GaussianNB, **kwargs)
 
 

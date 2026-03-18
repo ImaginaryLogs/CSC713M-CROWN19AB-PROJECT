@@ -32,3 +32,50 @@ Viruses Properties Data Entries:
 ## Installation & Usage
 
 Please install `uv` pack manager [UV DOCS](https://docs.astral.sh/uv/).
+
+`uv sync`
+
+## File Structure
+
+```txt
+root/
+├── data/                    # For raw/processed protein data
+│   ├── raw_cdr.csv
+│   └── binding_labels.csv
+├── src/                     # Source code directory
+│   ├── data_module/          # ProteinDataModule implementations
+│   │   ├── \_\_init\_\_.py
+│   │   └── data_module.py    # Main DataModule definition
+│   ├── features/             # Feature extractors
+│   │   ├── \_\_init\_\_.py
+│   │   ├── physchem.py        # Physicochemical feature extraction
+│   │   ├── sequence_embeddings.py  # Sequence embedding models
+│   │   └── structural_recursive.py # Graph/recursive features
+│   ├── models/               # Model implementations
+│   │   ├── \_\_init\_\_.py
+│   │   ├── classical_ml.py   # Standard ML models (MLP)
+│   │   ├── deep_learning.py   # Deep learning models (CNN, Transformer)
+│   │   ├── recursive_dl.py   # Recursive deep learning models (Tree-LSTM)
+│   │   └── quantum_dl.py     # PennyLane hybrid quantum-classical models
+│   ├── lightning_modules/     # Lightning wrappers
+│   │   ├── \_\_init\_\_.py
+│   │   └── classifier.py     # ProteinClassifier LightningModule
+│   └── utils/                # Utility scripts
+│       ├── \_\_init\_\_.py
+│       └── metrics.py        # Metric definitions for W&B logging
+├── config/                  # Configuration files
+│   ├── train_config.yaml    # General training parameters
+│   └── model_configs/       # Hyperparameters for different models
+│       ├── mlp.yaml
+│       ├── deep_cnn.yaml
+│       └── quantum_hybrid.yaml
+├── notebooks/                # Jupyter Notebooks for exploration
+│   └── eda.ipynb
+├── tests/                   # Unit tests
+│   └── test_data_module.py
+├── main.py                   # Main script to run training
+├── requirements.txt
+├── .gitignore
+├── .wandb/                   # Wandb configurations (internal)
+└── README.md
+```

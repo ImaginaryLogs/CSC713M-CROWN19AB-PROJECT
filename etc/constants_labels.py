@@ -36,21 +36,3 @@ BINDING_UNK_LABEL = f'binding_unk'
 NEUTRAL_YES_LABEL = f'neutral_yes'
 NEUTRAL_NOT_LABEL = f'neutral_not'
 NEUTRAL_UNK_LABEL = f'neutral_unk'
-
-# Path Config
-ROOT_DIR = Path(__file__).resolve(strict=True).parents[1]
-MODELS_DIR = ROOT_DIR / "artifacts" / "models"
-FEATURES_DIR = ROOT_DIR / "artifacts" / "features"
-RAWDATA_FILE = ROOT_DIR / "data" / "CoV-AbDab_080224.csv"
-
-SPLITS = {"train": 0.7, "val": 0.15, "test": 0.15}
-
-DEFAULT_SEED = 42
-DEFAULT_LR = 0.001
-DEFAULT_WEIGHT_DECAY = 0.01
-CHUNK_SIZE = 100
-
-#WANDB
-
-WANDB_ENTITY="logarithmicpresence-de-la-salle-university"
-WANDB_PROJECT="tumaini-model-training"

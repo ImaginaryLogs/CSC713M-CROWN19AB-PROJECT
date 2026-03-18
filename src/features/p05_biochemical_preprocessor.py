@@ -4,7 +4,7 @@ from Bio.SeqUtils.ProtParam import ProteinAnalysis
 import re
 import os, sys
 sys.path.append(os.path.abspath("../../etc/"))
-from etc import config
+from etc import constants_labels
 from src.utils.worker import preprocessor_worker
 from typing import Any, Dict, Optional, Union
 
@@ -56,8 +56,8 @@ class Biochemical_Preprocess(preprocessor_worker):
         return chunk[chunk[col].notna() & (chunk[col] != 'ND')]
     
     def data_cleaning(self, chunk: pd.DataFrame) -> pd.DataFrame:
-        chunk = chunk.drop(columns=config.IGNORED_FEATURES)
-        for genetic_seq in config.EXTRACTABLE_BIOSEQUENCE_FEATURES:
+        chunk = chunk.drop(columns=constants_labels.IGNORED_FEATURES)
+        for genetic_seq in constants_labels.EXTRACTABLE_BIOSEQUENCE_FEATURES:
             chunk = self.get_existing_data(chunk, genetic_seq)
         return chunk
     
@@ -66,7 +66,7 @@ class Biochemical_Preprocess(preprocessor_worker):
         chunk = self.data_cleaning(chunk)
     
         feature_dfs = []
-        for seq_col in config.EXTRACTABLE_BIOSEQUENCE_FEATURES:
+        for seq_col in constants_labels.EXTRACTABLE_BIOSEQUENCE_FEATURES:
             extracted = chunk[seq_col].apply(lambda val: self.extract_biochemical_features(val, seq_col))
             df_feats = pd.DataFrame(list(extracted), index=chunk.index)
             feature_dfs.append(df_feats)

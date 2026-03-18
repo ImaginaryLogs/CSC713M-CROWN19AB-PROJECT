@@ -2,7 +2,7 @@ import pandas as pd
 from pathlib import Path
 from abc import ABC, abstractmethod
 from src.utils.logging_module import get_logging
-from etc import config
+from etc import constants_training
 import traceback
 
 logger = get_logging(__name__)
@@ -10,7 +10,7 @@ logger = get_logging(__name__)
 class preprocessor_worker(ABC):
     def __init__(self, is_testing_data: bool = True):
         self.is_testing_data = is_testing_data
-        self.chunk_size = config.CHUNK_SIZE
+        self.chunk_size = constants_training.CHUNK_SIZE
     
     
     @abstractmethod

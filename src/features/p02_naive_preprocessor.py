@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from src.utils.worker import preprocessor_worker
 
 import os, sys
-from etc import config
+from etc import constants_labels
 
 
 
@@ -35,7 +35,7 @@ class Naive_Genetics_Preprocess(preprocessor_worker):
             genetic_length_marker : lengths.replace(0, 1) 
         }
 
-        for aa in config.AMINO_ACID_ALPHABETS:
+        for aa in constants_labels.AMINO_ACID_ALPHABETS:
             counts = temp_series.str.count(aa)
             new_cols[f'{col}_amino_acid_percentage_{aa}'] = counts / new_cols[genetic_length_marker]
             
@@ -70,8 +70,8 @@ class Naive_Genetics_Preprocess(preprocessor_worker):
         return chunk[chunk[col].notna() & (chunk[col]) != 'ND']
     
     def data_cleaning(self, chunk: pd.DataFrame) -> pd.DataFrame:
-        chunk = chunk.drop(columns=config.IGNORED_FEATURES)
-        for genetic_seq in config.EXTRACTABLE_BIOSEQUENCE_FEATURES:
+        chunk = chunk.drop(columns=constants_labels.IGNORED_FEATURES)
+        for genetic_seq in constants_labels.EXTRACTABLE_BIOSEQUENCE_FEATURES:
             chunk = self.get_existing_data(chunk, genetic_seq)
         return chunk
     
@@ -79,7 +79,7 @@ class Naive_Genetics_Preprocess(preprocessor_worker):
     def transform(self, chunk: pd.DataFrame) -> pd.DataFrame:
         chunk = self.data_cleaning(chunk)
         final_chunk = pd.DataFrame()
-        for genetic_sequence in config.EXTRACTABLE_BIOSEQUENCE_FEATURES:
+        for genetic_sequence in constants_labels.EXTRACTABLE_BIOSEQUENCE_FEATURES:
             final_chunk = self.get_naive_biosequence_information(chunk, final_chunk, genetic_sequence)
         location_chunk = self.get_one_hot_epitopes(chunk)
         final_chunk = pd.concat([final_chunk, location_chunk], axis = 1)

@@ -1,5 +1,5 @@
 import random, wandb
-from etc import config
+from etc import constants_labels
 
 def train_ml_classical(
   classifier: str,
@@ -8,8 +8,8 @@ def train_ml_classical(
   seed: int,
 ) -> None:
   run = wandb.init(
-      entity=config.WANDB_ENTITY
-    , project=config.WANDB_PROJECT
+      entity=constants_labels.WANDB_ENTITY
+    , project=constants_labels.WANDB_PROJECT
     , config={
         "classifier": classifier
       , "feature_type": feature_type

@@ -1,5 +1,5 @@
 from itertools import product
-from etc import config
+import constants_labels
 CONJOINT_TRIADS = {
     'A': '1', 'G': '1', 'V': '1',             # Aliphatic
     'I': '2', 'L': '2', 'F': '2', 'P': '2',   # Large Aliphatic
@@ -12,4 +12,4 @@ CONJOINT_TRIADS = {
 
 
 TRIAD_NAMES = ["".join(t) for t in product("1234567", repeat=3)]
-KMER3_NAMES = ["".join(t) for t in product(config.AMINO_ACID_ALPHABETS, repeat=3)]
+KMER3_NAMES = ["".join(t) for t in product(constants_labels.AMINO_ACID_ALPHABETS, repeat=3)]
