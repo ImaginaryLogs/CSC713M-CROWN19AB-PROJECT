@@ -95,6 +95,68 @@ class Biochemical_Preprocess(preprocessor_worker):
                 f"{col}_boman_index": 0,
                 f"{col}_flexibility": 0
             }
+            
+    def extract_cdr_features(self,  sequence: Union[str, float], col: str) -> dict[str, Any]:
+        if pd.isna(sequence) or  not str(sequence).strip():
+            return {
+                f"{col}_aliphatic_index": 0, # Stability
+                f"{col}_boman_index": 0, # Potential
+                f"{col}_isoelectric_point": 0, # Charge
+                f"{col}_molecular_weight": 0,
+                f"{col}_aromaticity": 0,
+            }
+        
+        # SANITIZATION: Remove spaces and non-AA characters
+        # This keeps only A-Z and removes anything else (like spaces or '*')
+        clean_seq = re.sub(r'[^A-Z]', '', str(sequence).upper())
+
+        try:
+            p = Peptide(clean_seq)
+            analysed_seq = ProteinAnalysis(clean_seq)
+            
+            features = {
+                f"{col}_aliphatic_index": p.aliphatic_index(),
+                f"{col}_boman_index": p.boman(),
+                f"{col}_isoelectric_point": p.isoelectric_point(),
+                f"{col}_molecular_weight": p.molecular_weight(),
+                f"{col}_aromaticity": analysed_seq.aromaticity()
+            }
+            return features
+        except KeyError as e:
+            logger.error(f"Skipping sequence {clean_seq} due to invalid character: {e}")
+            return {
+                f"{col}_aliphatic_index": 0, # Stability
+                f"{col}_boman_index": 0, # Potential
+                f"{col}_isoelectric_point": 0, # Charge
+                f"{col}_molecular_weight": 0,
+                f"{col}_aromaticity": 0,
+            }
+    def extract_vh_vl_features(self, sequence: Union[str, float], col: str) -> dict[str, Any]:
+        if pd.isna(sequence) or  not str(sequence).strip():
+            return {
+                f"{col}_isoelectric_point": 0,
+                f"{col}_molecular_weight": 0,
+            }
+        
+        # SANITIZATION: Remove spaces and non-AA characters
+        # This keeps only A-Z and removes anything else (like spaces or '*')
+        clean_seq = re.sub(r'[^A-Z]', '', str(sequence).upper())
+
+        try:
+            p = Peptide(clean_seq)
+            analysed_seq = ProteinAnalysis(clean_seq)
+            
+            features = {
+                f"{col}_isoelectric_point": p.isoelectric_point(),
+                f"{col}_molecular_weight": p.molecular_weight(),
+            }
+            return features
+        except KeyError as e:
+            logger.error(f"Skipping sequence {clean_seq} due to invalid character: {e}")
+            return {
+                f"{col}_isoelectric_point": 0,
+                f"{col}_molecular_weight": 0,
+            }
     
     def get_existing_data(self, chunk: pd.DataFrame, col: str) -> pd.DataFrame:
         return chunk[chunk[col].notna() & (chunk[col] != 'ND')]
@@ -110,8 +172,14 @@ class Biochemical_Preprocess(preprocessor_worker):
         chunk = self.data_cleaning(chunk)
     
         feature_dfs = []
-        for seq_col in constants_labels.EXTRACTABLE_BIOSEQUENCE_FEATURES:
-            extracted = chunk[seq_col].apply(lambda val: self.extract_biochemical_features(val, seq_col))
+        
+        for seq_col in ['CDRH3','CDRL3']:
+            extracted = chunk[seq_col].apply(lambda val: self.extract_cdr_features(val, seq_col))
+            df_feats = pd.DataFrame(list(extracted), index=chunk.index)
+            feature_dfs.append(df_feats)
+            
+        for seq_col in ['VL','VHorVHH']:
+            extracted = chunk[seq_col].apply(lambda val: self.extract_cdr_features(val, seq_col))
             df_feats = pd.DataFrame(list(extracted), index=chunk.index)
             feature_dfs.append(df_feats)
                 

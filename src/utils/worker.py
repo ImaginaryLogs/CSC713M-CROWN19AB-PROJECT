@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from src.utils.logging_module import get_logging
 from etc import constants_training
 import traceback
-
+from typing import Union
 logger = get_logging(__name__)
 
 class preprocessor_worker(ABC):
@@ -14,7 +14,7 @@ class preprocessor_worker(ABC):
     
     
     @abstractmethod
-    def transform(self, chunk: pd.DataFrame) -> pd.DataFrame:
+    def transform(self, chunk: Union[pd.DataFrame, pd.Series]) -> pd.DataFrame:
         pass
     
     

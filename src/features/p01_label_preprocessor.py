@@ -53,26 +53,26 @@ class Label_Preprocess(preprocessor_worker):
             return 1 if self.one_hot_encode(row, 'Ab or Nb', name) else 0
     
         def encode_neutral_yes_status(self, row: pd.Series, name: str) -> int:
-            return 1 if self.one_hot_encode(row, constants_labels.NEUTRAL_YES, name) else 0
+            return 1 if self.one_hot_encode(row, constants_labels.NEUTRAL_YES_RAW, name) else 0
         
         def encode_neutral_not_status(self, row: pd.Series, name: str) -> int:
-            return 1 if self.one_hot_encode(row, constants_labels.NEUTRAL_NOT, name) else 0
+            return 1 if self.one_hot_encode(row, constants_labels.NEUTRAL_NOT_RAW, name) else 0
         
         def encode_neutral_unk_status(self, row: pd.Series, name: str) -> int:
             return 1 if not (self.encode_neutral_yes_status(row, name) or self.encode_neutral_not_status(row, name)) else 0
 
         def encode_binding_yes_status(self, row: pd.Series, name: str) -> int:
-            return 1 if self.one_hot_encode(row, constants_labels.BINDING_YES, name) else 0
+            return 1 if self.one_hot_encode(row, constants_labels.BINDING_YES_RAW, name) else 0
         
         def encode_binding_not_status(self, row: pd.Series, name: str) -> int:
             # If [Doesn't bind] == 'Wuhan', yes
-            if self.one_hot_encode(row, constants_labels.BINDING_NOT, name):
+            if self.one_hot_encode(row, constants_labels.BINDING_NOT_RAW, name):
                 return 1
             # If [Binds] == 'Wuhan', No
-            if self.one_hot_encode(row, constants_labels.BINDING_YES, name):
+            if self.one_hot_encode(row, constants_labels.BINDING_YES_RAW, name):
                 return 0
             # If ([Binds] != Wuhan) AND ([Binds] == [Confirmed Non_Targets]), Yes
-            if self.get_list_from_cell(row[constants_labels.BINDING_YES])\
+            if self.get_list_from_cell(row[constants_labels.BINDING_YES_RAW])\
                     .intersection(constants_labels.NON_TARGETS):
                 return 1
             # Else, not enough information to confirm

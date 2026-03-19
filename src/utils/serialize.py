@@ -10,7 +10,9 @@ from sklearn.model_selection import train_test_split
 from streaming import MDSWriter
 import random
 import torch # For memory-efficient tensor handling if needed
-
+from src.features import feature_factory, negative_generator
+from typing import Any, Union, Set, TypedDict, Dict
+from src.features import p01_label_preprocessor
 logger = logging_module.get_logging(__name__)
 
 def convert_to_mds(feature_csv: Path, label_csv: Path, output_dir: Path, target_yes_col: str, target_not_col: str):
@@ -54,6 +56,167 @@ def convert_to_mds(feature_csv: Path, label_csv: Path, output_dir: Path, target_
                         'label': label_lookup[row_name]
                     })
     logger.info(f"Finished indexing labels {target_yes_col} and {target_not_col}")
+
+class TaskWriters(TypedDict):
+    train: MDSWriter
+    val: MDSWriter
+    test: MDSWriter
+
+class TaskMetadata(TypedDict):
+    train: Set[str]
+    val: Set[str]
+    test: Set[str]
+    lookup: Dict[str, int]
+    writers: TaskWriters
+    
+def _lightweight_split(
+    df_meta_raw: pd.DataFrame, # Just the raw dataframe with labels
+    output_base: Path,
+    ):
+    task_splits = {}
+    
+    for task_name, cols in constants_labels.LABEL_MAPPING.items():
+        # Identify valid samples for this task
+        valid_mask = (df_meta_raw[cols["finished"]["yes"]] == 1) | (df_meta_raw[cols["finished"]["not"]] == 1)
+        valid_meta: pd.DataFrame = df_meta_raw[valid_mask].copy()
+        
+        # Binary labels for stratification
+        strat_labels = np.where(valid_meta[cols["finished"]["yes"]] == 1, 1, 0)
+        
+        # 3-Way Split of NAMES only
+        train_val_names, test_names = train_test_split(
+            valid_meta['name'].values, 
+            test_size=constants_training.SPLITS["test"], 
+            stratify=strat_labels, 
+            random_state=constants_training.DEFAULT_SEED
+        )
+        
+        # Split train/val from the remaining 85%
+        train_val_meta = valid_meta[valid_meta['name'].isin(train_val_names)]
+        train_names, val_names = train_test_split(
+            train_val_names, 
+            test_size=constants_training.SPLITS["vals"], 
+            stratify=np.where(train_val_meta[cols["finished"]["yes"]] == 1, 1, 0), 
+            random_state=constants_training.DEFAULT_SEED
+        )
+
+        task_out = output_base / task_name
+        
+        writers = {
+                "train": MDSWriter(out=str(task_out / "train"), columns={'features': 'ndarray:float32', 'label': 'int'}, compression='zstd'),
+                "val": MDSWriter(out=str(task_out / "val"), columns={'features': 'ndarray:float32', 'label': 'int'}, compression='zstd'),
+                "test": MDSWriter(out=str(task_out / "test"), columns={'features': 'ndarray:float32', 'label': 'int'}, compression='zstd')
+        }
+        
+        lookup = dict(zip(valid_meta['name'], strat_labels))
+        
+        
+        locs = {
+            "train": set(train_names),
+            "val": set(val_names),
+            "test": set(test_names),
+            "lookup": lookup,
+            "writers": writers
+        }
+        task_splits[task_name] = locs
+    return task_splits
+
+def _mds_writer(
+    chunk: pd.DataFrame, 
+    row: pd.Series, 
+    name: str, 
+    meta: TaskMetadata, 
+    local_rng: random.Random,
+    factory_feature_extraction: feature_factory.FeatureFactory,
+    features: list[feature_factory.FeatureType],
+    oversample_factor: int = 1,
+    use_synthetic: bool = True
+):
+    if name not in meta["lookup"]: return
+    
+    label = meta["lookup"][name]
+    
+    # Identify which split this row belongs to
+    assigned_split = None
+    if name in meta["train"]: assigned_split = "train"
+    elif name in meta["val"]: assigned_split = "val"
+    elif name in meta["test"]: assigned_split = "test"
+    if not assigned_split: return
+
+    # 1. Standard Extraction (for all splits)
+    # We extract features only when we know we need them for a writer
+    feats = factory_feature_extraction.extract_features_from_row(row, features)
+    meta["writers"][assigned_split].write({'features': feats, 'label': label})
+
+    # 2. Augmentation (TRAIN ONLY)
+    if assigned_split == "train" and label == 1:
+        # A. Oversampling
+        for _ in range(oversample_factor - 1):
+            meta["writers"]["train"].write({'features': feats, 'label': label})
+        
+        # B. Synthetic Hard Negatives
+        if use_synthetic:
+            shuffled_row = row.copy()
+            shuffled_row['CDRH3'] = negative_generator.safe_shuffle(row['CDRH3'], local_rng)
+            shuffled_row['CDRL3'] = negative_generator.safe_shuffle(row['CDRL3'], local_rng)
+            shuffled_feats = factory_feature_extraction.extract_features_from_row(shuffled_row, features)
+            meta["writers"]["train"].write({'features': shuffled_feats, 'label': 0})
+
+def _task_delegation(
+    raw_csv_path: Path, 
+    task_splits, 
+    feature_factory: feature_factory.FeatureFactory, 
+    feauters: list[feature_factory.FeatureType], 
+    oversample_factor: int = 1, 
+    use_synthetic: bool = False
+):
+    logger.info(f"Streaming and Extracting Features (Oversample: {oversample_factor}, Synthetic: {use_synthetic})")
+    local_rng = random.Random(constants_training.DEFAULT_SEED)
+
+    # Use chunksize to ensure we only have a few hundred rows of heavy data in RAM at once
+    for chunk in tqdm(pd.read_csv(raw_csv_path, chunksize=constants_training.CHUNK_SIZE)):
+        for _, row in chunk.iterrows():
+            name = row['Name']
+            for task_name, meta in task_splits.items():
+                _mds_writer(chunk, row, name, meta, local_rng, feature_factory, feauters, oversample_factor=oversample_factor, use_synthetic=use_synthetic)
+
+def serialize_etl_data(
+    raw_csv: Path,
+    output_base: Path,
+    oversample_factor: int = 1,
+    use_synthetic_data = False
+):
+    # 1. Load Metadata
+    # We load slightly more columns to satisfy the Label_Preprocess requirements
+    meta_cols = ['Name', 'Ab or Nb'] + constants_labels.GROUPED_RAW
+    df_raw = pd.read_csv(raw_csv, usecols=meta_cols)
+    
+    # 2. RUN LABEL PREPROCESSOR FIRST
+    # This converts "Wuhan;Alpha" strings into 1s and 0s
+    label_worker = p01_label_preprocessor.Label_Preprocess()
+    processed_labels_df = label_worker.transform(df_raw)
+    # Define Registry/Factory inside or import it
+    factory = feature_factory.FeatureFactory()
+    types = [
+        feature_factory.FeatureType.NAIVE,
+        feature_factory.FeatureType.MOTIF_CONJOINT,
+        feature_factory.FeatureType.BIOCHEMICAL
+    ]
+    
+    meta_tasks: Dict[str, TaskMetadata] = _lightweight_split(processed_labels_df, output_base)
+    try:
+        _task_delegation(raw_csv, meta_tasks, factory, types, oversample_factor, use_synthetic_data)
+    except Exception as e:
+        logger.error(e)
+    finally:
+        # Guaranteed cleanup: Close writers even if extraction fails
+        for meta in meta_tasks.values():
+            k = meta["writers"]
+            for w in k.values():
+                w.finish() #type: ignore
+                
+    logger.info("Serialization complete. All shards flushed to disk.")
+    
 
 def serialize_all_data(
     feature_csvs: list[Path], 

@@ -1,10 +1,10 @@
 from pathlib import Path
 
 # Raw Label Col.
-BINDING_YES = "Binds to"
-BINDING_NOT = "Doesn't Bind to"
-NEUTRAL_YES = "Neutralising Vs"
-NEUTRAL_NOT = "Not Neutralising Vs"
+BINDING_YES_RAW = "Binds to"
+BINDING_NOT_RAW = "Doesn't Bind to"
+NEUTRAL_YES_RAW = "Neutralising Vs"
+NEUTRAL_NOT_RAW = "Not Neutralising Vs"
 
 # Strain Config
 TARGET = 'SARS-CoV2_WT'
@@ -38,3 +38,26 @@ NEUTRAL_NOT_LABEL = f'neutral_not'
 NEUTRAL_UNK_LABEL = f'neutral_unk'
 
 GROUPED_LABELS = [BINDING_YES_LABEL, BINDING_NOT_LABEL, BINDING_UNK_LABEL, NEUTRAL_YES_LABEL, NEUTRAL_NOT_LABEL, NEUTRAL_UNK_LABEL]
+GROUPED_RAW = [BINDING_YES_RAW, BINDING_NOT_RAW, NEUTRAL_YES_RAW, NEUTRAL_NOT_RAW]
+
+LABEL_MAPPING = {
+    "binding": {
+        "raw": {
+            "yes": BINDING_YES_RAW,
+            "no": BINDING_NOT_RAW,
+        }, "finished" :{
+            "yes": BINDING_YES_LABEL, 
+            "not": BINDING_NOT_LABEL    
+        }
+    }, 
+    "neutralization": {
+        "raw": {
+            "yes": NEUTRAL_YES_RAW,
+            "no": NEUTRAL_NOT_RAW,
+        }, "finished" : {     
+            "yes": NEUTRAL_YES_LABEL, 
+            "not": NEUTRAL_NOT_LABEL
+        }
+    }
+}
+

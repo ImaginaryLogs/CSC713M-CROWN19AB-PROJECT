@@ -1,10 +1,10 @@
 from enum import Enum, auto
-from typing import Dict, Type
+from typing import Dict, Type, Union, List
 import pandas as pd
 from pathlib import Path
 from src.features import p01_label_preprocessor, p02_naive_preprocessor, p03_motif_3kmer_preprocessor, p04_motif_conjoint_preprocessor, p05_biochemical_preprocessor
-
 from src.utils import logging_module
+from src.utils.worker import preprocessor_worker
 
 logger = logging_module.get_logging(__name__)
 
@@ -20,7 +20,7 @@ class FeatureFactory:
     def __init__(self) -> None:
         
         # Registry
-        self._registry: Dict[FeatureType, Type] = {
+        self._registry: Dict[FeatureType, Type[preprocessor_worker]] = {
             FeatureType.LABELS : p01_label_preprocessor.Label_Preprocess
             , FeatureType.NAIVE : p02_naive_preprocessor.Naive_Genetics_Preprocess
             , FeatureType.MOTIF_3KMER : p03_motif_3kmer_preprocessor.Motif_3kmer_Preprocess
@@ -34,6 +34,15 @@ class FeatureFactory:
             raise ValueError(f"Feature type {feature_type} not registered.")
         
         return worker_class(**kwargs)
+    
+    def extract_features_from_row(self, row: Union[pd.DataFrame, pd.Series], types: list[FeatureType]):
+        final: List[pd.DataFrame] = []
+        logger.info(f"Extracting information")
+        for worker in types:
+            logger.info(f"Running {worker.name}")
+            worker = self.get_worker(worker)
+            final.append(worker.transform(row))
+        return pd.concat(final)
     
     def run_multi_feature_pipeline(self, 
                                    input_path: Path, 
