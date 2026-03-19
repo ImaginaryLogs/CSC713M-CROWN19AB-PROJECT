@@ -5,7 +5,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import LinearSVC
 from sklearn.ensemble import RandomForestClassifier 
 from sklearn.linear_model import LogisticRegression as ScikitLR
-from sklearn.naive_bayes import GaussianNB
+from sklearn.naive_bayes import MultinomialNB
 from sklearn.calibration import CalibratedClassifierCV
 from typing import Any, Callable, Type, Union, cast
 from sklearn.decomposition import PCA
@@ -117,7 +117,7 @@ class LogisticRegression(ClassicMlClassifer):
 
 class NaiveBayes(ClassicMlClassifer):
     def __init__(self, random_state: int | None = 42, has_pca: bool = False, **kwargs: object) -> None:
-        super().__init__(GaussianNB, has_pca=has_pca, **kwargs)
+        super().__init__(MultinomialNB, has_pca=has_pca, **kwargs)
 
 
 CLASSICAL_ML_CLASSIFIER: dict[str, Callable[...,ClassicMlClassifer]] = {
