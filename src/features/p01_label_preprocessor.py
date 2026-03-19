@@ -15,7 +15,8 @@ from src.utils.worker import preprocessor_worker
 
 import os, sys
 from etc import constants_labels
-
+from src.utils import logging_module
+logger = logging_module.get_logging(__name__)
 
 
 class Label_Preprocess(preprocessor_worker):
@@ -97,6 +98,9 @@ class Label_Preprocess(preprocessor_worker):
         # So here, for each label, apply the encoder
         for (ith, (outlabel, label_encoder)) in enumerate(self.translation_array):
             final_chunk[outlabel] = chunk.apply(lambda row: label_encoder(row, constants_labels.TARGET), axis=1)
+        final_chunk = final_chunk.replace([np.inf, -np.inf], np.nan).fillna(0.0)
         final_chunk['name'] = chunk['Name'] 
-        
+        if final_chunk.isna().any().any():
+            nan_cols = final_chunk.columns[final_chunk.isna().any()].tolist()
+            logger.warning(f"Found NaNs in columns: {nan_cols[:10]}... (Total: {len(nan_cols)})")
         return final_chunk

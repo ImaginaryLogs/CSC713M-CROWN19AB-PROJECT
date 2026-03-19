@@ -7,7 +7,9 @@ sys.path.append(os.path.abspath("../../etc/"))
 from etc import constants_labels
 from src.utils.worker import preprocessor_worker
 from typing import Any, Dict, Optional, Union
-
+from src.utils import logging_module
+import numpy as np
+logger = logging_module.get_logging(__name__)
 class Biochemical_Preprocess(preprocessor_worker):
     def __init__(self, is_testing_data: bool = True) -> None:
         self.is_testing_data = is_testing_data
@@ -17,7 +19,21 @@ class Biochemical_Preprocess(preprocessor_worker):
     def extract_biochemical_features(self, sequence: Union[str, float], col: str) -> dict[str, Any]:
         # Handle NaNs or empty strings
         if pd.isna(sequence) or  not str(sequence).strip():
-            return {}
+            return {
+                f"{col}_hydrophobicity": 0,
+                f"{col}_isoelectric_point": 0,
+                f"{col}_charge_ph7": 0,
+                f"{col}_molecular_weight": 0,
+                
+                # 2. Stability & Structure
+                f"{col}_aliphatic_index": 0,
+                f"{col}_instability_index": 0,
+                f"{col}_aromaticity": 0,
+                
+                # 3. Binding Potential
+                f"{col}_boman_index": 0,
+                f"{col}_flexibility": 0
+            }
         
         # SANITIZATION: Remove spaces and non-AA characters
         # This keeps only A-Z and removes anything else (like spaces or '*')
@@ -25,7 +41,21 @@ class Biochemical_Preprocess(preprocessor_worker):
         
         # Biopython's instability_index requires at least 2 AAs
         if len(clean_seq) < 2:
-            return {}
+            return {
+                f"{col}_hydrophobicity": 0,
+                f"{col}_isoelectric_point": 0,
+                f"{col}_charge_ph7": 0,
+                f"{col}_molecular_weight": 0,
+                
+                # 2. Stability & Structure
+                f"{col}_aliphatic_index": 0,
+                f"{col}_instability_index": 0,
+                f"{col}_aromaticity": 0,
+                
+                # 3. Binding Potential
+                f"{col}_boman_index": 0,
+                f"{col}_flexibility": 0
+            }
 
         try:
             p = Peptide(clean_seq)
@@ -49,8 +79,22 @@ class Biochemical_Preprocess(preprocessor_worker):
             }
             return features
         except KeyError as e:
-            print(f"Skipping sequence {clean_seq} due to invalid character: {e}")
-            return {}
+            logger.error(f"Skipping sequence {clean_seq} due to invalid character: {e}")
+            return {
+                f"{col}_hydrophobicity": 0,
+                f"{col}_isoelectric_point": 0,
+                f"{col}_charge_ph7": 0,
+                f"{col}_molecular_weight": 0,
+                
+                # 2. Stability & Structure
+                f"{col}_aliphatic_index": 0,
+                f"{col}_instability_index": 0,
+                f"{col}_aromaticity": 0,
+                
+                # 3. Binding Potential
+                f"{col}_boman_index": 0,
+                f"{col}_flexibility": 0
+            }
     
     def get_existing_data(self, chunk: pd.DataFrame, col: str) -> pd.DataFrame:
         return chunk[chunk[col].notna() & (chunk[col] != 'ND')]
@@ -71,6 +115,10 @@ class Biochemical_Preprocess(preprocessor_worker):
             df_feats = pd.DataFrame(list(extracted), index=chunk.index)
             feature_dfs.append(df_feats)
                 
-        final_chunk = pd.concat([chunk] + feature_dfs, axis=1)
-
+        final_chunk = pd.concat(feature_dfs, axis=1)
+        final_chunk = final_chunk.replace([np.inf, -np.inf], np.nan).fillna(0.0)
+        final_chunk['name'] = chunk['Name'].values
+        if final_chunk.isna().any().any():
+            nan_cols = final_chunk.columns[final_chunk.isna().any()].tolist()
+            logger.warning(f"Found NaNs in columns: {nan_cols[:10]}... (Total: {len(nan_cols)})")
         return final_chunk

@@ -21,11 +21,11 @@ class FeatureFactory:
         
         # Registry
         self._registry: Dict[FeatureType, Type] = {
-            FeatureType.LABELS : p01_label_preprocessor
-            , FeatureType.NAIVE : p02_naive_preprocessor
-            , FeatureType.MOTIF_3KMER : p03_motif_3kmer_preprocessor
-            , FeatureType.MOTIF_CONJOINT : p04_motif_conjoint_preprocessor
-            , FeatureType.BIOCHEMICAL : p05_biochemical_preprocessor
+            FeatureType.LABELS : p01_label_preprocessor.Label_Preprocess
+            , FeatureType.NAIVE : p02_naive_preprocessor.Naive_Genetics_Preprocess
+            , FeatureType.MOTIF_3KMER : p03_motif_3kmer_preprocessor.Motif_3kmer_Preprocess
+            , FeatureType.MOTIF_CONJOINT : p04_motif_conjoint_preprocessor.Motif_Conjoint_Preprocess
+            , FeatureType.BIOCHEMICAL : p05_biochemical_preprocessor.Biochemical_Preprocess
         }
         
     def get_worker(self, feature_type: FeatureType, **kwargs):

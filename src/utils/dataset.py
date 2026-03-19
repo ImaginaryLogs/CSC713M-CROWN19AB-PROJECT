@@ -1,13 +1,13 @@
 import torch
-from torch.utils.data import Dataset
-
-class CDRDataset(Dataset):
-    def __init__(self, features, labels):
-        self.features = torch.tensor(features, dtype=torch.float32)
-        self.labels = torch.tensor(labels, dtype=torch.float32)
-
-    def __len__(self):
-        return len(self.labels)
-
-    def __getitem__(self, idx):
-        return self.features[idx], self.labels[idx]
+import numpy as np
+import pandas as pd
+from torch.utils.data import Dataset, IterableDataset, DataLoader
+from streaming import StreamingDataset, StreamingDataLoader
+class LazyStreamingDataset(StreamingDataset):
+    """Custom wrapper to ensure tensors are correctly typed for Lightning."""
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
+        obj = super().__getitem__(index)
+        # MDS stores as ndarray; Lightning needs torch.Tensor
+        x = torch.from_numpy(obj['features'].copy()).float()
+        y = torch.tensor(obj['label'], dtype=torch.long)
+        return x, y

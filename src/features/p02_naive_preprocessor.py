@@ -15,7 +15,8 @@ from src.utils.worker import preprocessor_worker
 
 import os, sys
 from etc import constants_labels
-
+from src.utils import logging_module
+logger = logging_module.get_logging(__name__)
 
 
 class Naive_Genetics_Preprocess(preprocessor_worker):
@@ -25,7 +26,6 @@ class Naive_Genetics_Preprocess(preprocessor_worker):
 
     
     def get_naive_biosequence_information(self, chunk: pd.DataFrame, df_processed: pd.DataFrame, col: str):
-        
         temp_series = chunk[col].fillna("")
         lengths = temp_series.str.len()
         
@@ -83,5 +83,9 @@ class Naive_Genetics_Preprocess(preprocessor_worker):
             final_chunk = self.get_naive_biosequence_information(chunk, final_chunk, genetic_sequence)
         location_chunk = self.get_one_hot_epitopes(chunk)
         final_chunk = pd.concat([final_chunk, location_chunk], axis = 1)
-        
+        final_chunk = final_chunk.replace([np.inf, -np.inf], np.nan).fillna(0.0)
+        final_chunk['name'] = chunk['Name'].values
+        if final_chunk.isna().any().any():
+            nan_cols = final_chunk.columns[final_chunk.isna().any()].tolist()
+            logger.warning(f"Found NaNs in columns: {nan_cols[:10]}... (Total: {len(nan_cols)})")
         return final_chunk

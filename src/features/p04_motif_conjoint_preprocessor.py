@@ -15,7 +15,8 @@ from src.utils.worker import preprocessor_worker
 
 import os, sys
 from etc import constants_biology, constants_labels
-
+from src.utils import logging_module
+logger = logging_module.get_logging(__name__)
 
 
 
@@ -67,5 +68,9 @@ class Motif_Conjoint_Preprocess(preprocessor_worker):
             feature_conjoint_triads_dfs.append(ctd_df)
         
         final_chunk = pd.concat([final_chunk] + feature_conjoint_triads_dfs, axis=1)
-
+        final_chunk = final_chunk.replace([np.inf, -np.inf], np.nan).fillna(0.0)
+        final_chunk['name'] = chunk['Name'].values
+        if final_chunk.isna().any().any():
+            nan_cols = final_chunk.columns[final_chunk.isna().any()].tolist()
+            logger.warning(f"Found NaNs in columns: {nan_cols[:10]}... (Total: {len(nan_cols)})")
         return final_chunk

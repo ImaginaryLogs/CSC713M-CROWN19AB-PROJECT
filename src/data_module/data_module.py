@@ -1,82 +1,121 @@
 from pathlib import Path
+from lightning.pytorch.utilities.types import EVAL_DATALOADERS
 import pandas as pd
 import numpy as np
 import torch
 from lightning import LightningDataModule
 from sklearn.model_selection import StratifiedKFold
-from torch.utils.data import (
-    ConcatDataset,
-    DataLoader,
-    Subset,
-    WeightedRandomSampler,
-    random_split,
-)
+from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from src.utils import dataset
+from src.utils import logging_module
+from streaming import StreamingDataset, StreamingDataLoader
 
+logger = logging_module.get_logging(__name__)
 
 class DataModule(LightningDataModule):
-    def __init__(self, feature_files: list[str], label_file: str, batch_size=32, use_synthetic=False):
+    def __init__(self, train_dir: str, val_dir: str, test_dir: str, batch_size: int = 1024, num_workers: int = 4):
         super().__init__()
-        self.feature_files = feature_files
-        self.label_file = label_file
+        self.train_dir = train_dir
+        self.val_dir = val_dir
+        self.test_dir = test_dir
         self.batch_size = batch_size
-        self.scaler = StandardScaler()
-        self.use_synthetic = use_synthetic
-
-    def setup(self, stage=None):
-        # 1. Load Labels
-        master_df = pd.read_csv(self.label_file)
-
-        # 2. Join all selected feature CSVs
-        for f_file in self.feature_files:
-            f_df = pd.read_csv(f_file)
-            master_df = pd.merge(master_df, f_df, on='name', how='inner')
-
-        # 3. Identify target and drop metadata
-        # Ensure 'neutralizes' exists; adjusted to handle potential missing cols
-        target_col = 'neutralizes' 
-        metadata_cols = ['name', 'binds', target_col]
+        self.num_workers = num_workers
         
-        X = master_df.drop(columns=[c for c in metadata_cols if c in master_df.columns]).values
-        y = master_df[target_col].to_numpy()
+        # Placeholders for datasets
+        self.train_ds = None
+        self.val_ds = None
+        self.test_ds = None
         
-        # 4. Initial Split (Real Data Only)
-        X_train, X_temp, y_train, y_temp = train_test_split(
-            X, y, test_size=0.3, random_state=42, stratify=y
-        )
-        X_val, X_test, y_val, y_test = train_test_split(
-            X_temp, y_temp, test_size=0.5, random_state=42, stratify=y_temp
-        )
-
-        # 5. Scaling (Fit on Train, Transform others)
-        X_train = self.scaler.fit_transform(X_train)
-        X_val = self.scaler.transform(X_val)
-        X_test = self.scaler.transform(X_test)
-
-        # 6. Synthetic Augmentation (Train Set Only)
-        if self.use_synthetic and (stage == "fit" or stage is None):
-            # For now, we "pass through" but keep the structure for SMOTE/Jittering
-            # Note: You can add SMOTE here later.
-            X_train_final, y_train_final = X_train, y_train 
-            print(f"Training set: {np.bincount(y_train_final.astype(int))}")
-        else:
-            X_train_final, y_train_final = X_train, y_train
-
-        # 7. Final Dataset Assignment
+    def setup(self, stage: str = "fit"):
+        """
+        Official Logic: Initialize datasets pointing to MDS directories.
+        Note: We don't load the data here, just the index.json metadata.
+        """
+        
         if stage == "fit" or stage is None:
-            self.train_ds = dataset.CDRDataset(X_train_final, y_train_final)
-            self.val_ds = dataset.CDRDataset(X_val, y_val)
-        
-        if stage == "test" or stage is None:
-            self.test_ds = dataset.CDRDataset(X_test, y_test)
-
+            self.train_ds = dataset.LazyStreamingDataset(
+                local=self.train_dir, 
+                shuffle=True, 
+                batch_size=self.batch_size
+            )
+            self.val_ds = dataset.LazyStreamingDataset(
+                local=self.val_dir, 
+                shuffle=False, 
+                batch_size=self.batch_size
+            )
+            logger.info(f"Fit Stage: {len(self.train_ds)} train, {len(self.val_ds)} val samples.")
+            
+        elif stage == "test":
+            self.test_ds = dataset.LazyStreamingDataset(
+                local=self.val_dir,
+                shuffle=False,
+                batch_size=self.batch_size
+            )
+            logger.info(f"Test Stage: {len(self.test_ds)} test samples.")
+            
+            logger.info(f"Streaming DataModule initialized with {len(self.test_ds)} training samples.")
+    
     def train_dataloader(self):
-        return DataLoader(self.train_ds, batch_size=self.batch_size, shuffle=True, num_workers=4)
+        # StreamingDataLoader is a drop-in replacement optimized for MDS
+        return StreamingDataLoader(
+            self.train_ds,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            pin_memory=True, # Recommended for GPU training
+            drop_last=True   # Prevents 'remainder' batches from skewing gradients
+        )
 
     def val_dataloader(self):
-        return DataLoader(self.val_ds, batch_size=self.batch_size)
-
+        return StreamingDataLoader(
+            self.val_ds,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            pin_memory=True
+        )
+        
     def test_dataloader(self):
-        return DataLoader(self.test_ds, batch_size=self.batch_size)
+        return StreamingDataLoader(
+            self.test_ds,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            pin_memory=True
+        )
+    
+    def get_full_arrays(self, stage="train")-> tuple[np.ndarray, np.ndarray]:
+        """Bridge for Classical ML: Converts stream to Eager Numpy Arrays."""
+        ds = self.train_ds if stage == "train" else self.val_ds
+        if ds is None: raise ValueError("Dataset not initialized.")
+            
+        X_list, y_list = [], []
+        first_shape = None
+
+        for i, (x, y) in enumerate(ds):
+            curr_shape = x.shape
+            if first_shape is None:
+                first_shape = curr_shape
+            
+            if curr_shape != first_shape:
+                # This is your culprit!
+                logger.error(f"Shape Mismatch at index {i}! Expected {first_shape}, got {curr_shape}")
+                continue # Skip it for now to let the script finish
+                
+            X_list.append(x.numpy())
+            y_list.append(y.item())
+        X = np.stack(X_list)
+        X = np.nan_to_num(X, nan=0.0, posinf=0.0, neginf=0.0)
+        y = np.array(y_list)
+        return X, y 
+    
+    @property
+    def train_dataset(self) -> StreamingDataset:
+        if self.train_ds is None:
+            raise RuntimeError("DataModule.setup() has not been called yet.")
+        return self.train_ds
+
+    @property
+    def val_dataset(self) -> StreamingDataset:
+        if self.val_ds is None:
+            raise RuntimeError("DataModule.setup() has not been called yet.")
+        return self.val_ds

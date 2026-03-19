@@ -12,6 +12,7 @@ dev = [
     "logging>=0.4.9.6",
     "logomaker>=0.8.7",
     "matplotlib>=3.10.8",
+    "mosaicml-streaming>=0.10.0",
     "numba>=0.57.0",
     "numpy>=2.2.6",
     "pandas>=2.3.3",
