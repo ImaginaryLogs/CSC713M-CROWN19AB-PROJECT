@@ -154,25 +154,25 @@ def _mds_writer(
     elif name in meta["test"]: assigned_split = "test"
     if not assigned_split: return
 
-    # 1. Standard Extraction (for all splits)
+    # Standard Extraction (for all splits)
     # We extract features only when we know we need them for a writer
     feats = factory_feature_extraction.extract_features_from_row(row, features)
     logger.info(f"{name} {feats.__str__()}")
     meta["writers"][assigned_split].write({'features': feats, 'label': label})
 
-    # 2. Augmentation (TRAIN ONLY)
-    if assigned_split == "train" and label == 1:
-        # A. Oversampling
-        for _ in range(oversample_factor - 1):
-            meta["writers"]["train"].write({'features': feats, 'label': label})
-        
-        # B. Synthetic Hard Negatives
+    # Augmentation (TRAIN ONLY)
+    if assigned_split == "train" and label == 1:        
+        # A. Synthetic Hard Negatives
         if use_synthetic:
             shuffled_row = row.copy()
             shuffled_row['CDRH3'] = negative_generator.safe_shuffle(row['CDRH3'], local_rng)
             shuffled_row['CDRL3'] = negative_generator.safe_shuffle(row['CDRL3'], local_rng)
             shuffled_feats = factory_feature_extraction.extract_features_from_row(shuffled_row, features)
             meta["writers"]["train"].write({'features': shuffled_feats, 'label': 0})
+    elif assigned_split == 'train' and label == 0:
+        # B. Oversampling Negative Cases (need to rerun since negatives since class imbalance)
+        for _ in range(oversample_factor - 1):
+            meta["writers"]["train"].write({'features': feats, 'label': label})
 
 def is_valid_sequence(seq) -> bool:
     """Checks if a sequence is present and biologically processable."""
@@ -190,7 +190,7 @@ def _task_delegation(
 ):
     logger.info(f"Streaming and Extracting Features (Oversample: {oversample_factor}, Synthetic: {use_synthetic})")
     local_rng = random.Random(constants_training.DEFAULT_SEED)
-    # Use chunksize to ensure we only have a few hundred rows of heavy data in RAM at once
+
     for chunk in tqdm(pd.read_csv(raw_csv_path, chunksize=constants_training.CHUNK_SIZE)):
         clean_chunk = chunk.dropna(subset=constants_labels.EXTRACTABLE_BIOSEQUENCE_FEATURES)
         clean_chunk = clean_chunk[~clean_chunk['CDRH3'].str.contains('ND', na=False)]
@@ -212,16 +212,13 @@ def serialize_etl_data(
     oversample_factor: int = 1,
     use_synthetic_data = False
 ):
-    # 1. Load Metadata
-    # We load slightly more columns to satisfy the Label_Preprocess requirements
     meta_cols = ['Name', 'Ab or Nb', 'CDRH3', 'CDRL3'] + constants_labels.GROUPED_RAW
     df_raw = pd.read_csv(raw_csv, usecols=meta_cols)
     
-    # 2. RUN LABEL PREPROCESSOR FIRST
-    # This converts "Wuhan;Alpha" strings into 1s and 0s
+
     label_worker = p01_label_preprocessor.Label_Preprocess()
     processed_labels_df = label_worker.transform(df_raw)
-    # Define Registry/Factory inside or import it
+    
     factory = feature_factory.FeatureFactory()
     types = [
         feature_factory.FeatureType.NAIVE,
@@ -235,7 +232,6 @@ def serialize_etl_data(
     except Exception as e:
         logger.error(traceback.format_exc())
     finally:
-        # Guaranteed cleanup: Close writers even if extraction fails
         for meta in meta_tasks.values():
             k = meta["writers"]
             for w in k.values():

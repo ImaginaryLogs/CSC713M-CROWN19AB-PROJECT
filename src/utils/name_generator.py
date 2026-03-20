@@ -114,19 +114,21 @@ class ModelFlags(IntFlag):
     HAS_PCA = 1 << 0        # 1
     HAS_SYNTHETIC = 1 << 1  # 2
     HAS_OVERSAMP = 1 << 2   # 4
-    IS_BALANCED = 1 << 3    # 8
+    HAS_WEIGHT_IMBALANCE = 1 << 3    # 8
     # Add more as needed: HAS_K_BEST = 1 << 4, etc.
 
-def get_config_bitmask(has_pca: bool= False, has_synthetic: bool = False, has_oversamp: bool= False, is_balanced: bool= False) -> int:
+
+def get_config_bitmask(has_pca: bool= False, has_synthetic: bool = False, has_oversamp: bool= False, has_weight_imbalance: bool= False) -> int:
     flags = ModelFlags.NONE
     if has_pca: flags |= ModelFlags.HAS_PCA
     if has_synthetic: flags |= ModelFlags.HAS_SYNTHETIC
     if has_oversamp: flags |= ModelFlags.HAS_OVERSAMP
-    if is_balanced: flags |= ModelFlags.IS_BALANCED
+    if has_weight_imbalance: flags |= ModelFlags.HAS_WEIGHT_IMBALANCE
     
     return int(flags)
 
-def get_run_name(model_key: str, task: str, flags: int) -> str:
+
+def get_run_name(model_key: str, task: str, flags: int, deep_ml:None=None) -> str:
     timestamp = time.strftime("%H%M%d")
     local_random = random.Random(time.time_ns())
     selected_array = local_random.choice([genshin_names, hsr_names])

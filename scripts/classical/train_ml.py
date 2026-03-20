@@ -11,12 +11,13 @@ from src.data_module.data_module import DataModule
 from src.utils import logging_module, serialize, wandb_setter, name_generator, metrics, set_seed
 from etc import constants_training, constants_labels
 from typing import Any
+import inspect
 
-
+BASELINE_CLASSWEIGHT = {0: 1.0, 1: 1.0}
 
 logger = logging_module.get_logging(__name__)
 
-def run_classical_training(model_key="rf", task="neutralization", oversampling_ratio:int = 1, has_synthetic_cdr: bool = False, has_pca: bool = False, **kwargs: Any):
+def run_classical_training(model_key="rf", task="neutralization", oversampling_ratio:int = 1, has_synthetic_cdr: bool = False, has_pca: bool = False, class_weight: dict[int, float] = BASELINE_CLASSWEIGHT,**kwargs: Any):
     set_seed.set_seed()
     PROCESSED_DIR = constants_training.ART_FEATURES_DIR
     data_config_name = f"{task}_ov{oversampling_ratio}_syn{has_synthetic_cdr}"
@@ -35,6 +36,10 @@ def run_classical_training(model_key="rf", task="neutralization", oversampling_r
     else:
         logger.info(f"Using EXISTING shards for {data_config_name}")
 
+    has_punished_weight = (class_weight[0] > class_weight[1])
+    logger.info(f"Has weights: {class_weight}, punished weights: {has_punished_weight}")
+    if oversampling_ratio > 1 and has_punished_weight:
+        logger.warning("Caution: Combining oversampling and class weights. Results will be highly biased.")
     # Point DataModule to the unique folder
     dm = DataModule(
         train_dir=str(TASK_DIR / "train"),
@@ -56,25 +61,26 @@ def run_classical_training(model_key="rf", task="neutralization", oversampling_r
     logger.info("WandB Initializiation...")
     # 5. Initialize WandB for Experiment Tracking
     wandb_setter.setup_wandb()
-    flags = name_generator.get_config_bitmask(has_pca=has_pca, has_oversamp=oversampling_ratio>1, has_synthetic=has_synthetic_cdr)
+    flags = name_generator.get_config_bitmask(has_pca=has_pca, has_oversamp=oversampling_ratio>1, has_synthetic=has_synthetic_cdr, has_weight_imbalance=has_punished_weight)
     name = name_generator.get_run_name(model_key, task=task, flags=flags)
     run = wandb.init(
         project="CSC713M_MSINTSY",
         name=name,
+        group="classical_ml",
         config={
-            "group": "classical_ml", 
             "model": model_key, 
             "task": task,
             "has_pca": has_pca,
             "has_synthetic_cdr": has_synthetic_cdr,
-            "oversampling_ratio": oversampling_ratio
+            "oversampling_ratio": oversampling_ratio,
+            "class_weight": str(class_weight)
         }
     )
 
     # 6. Initialize and Train the Scikit-Learn Model
     logger.info(f"Training Classical Model: {model_key}")
     model_class = classical_ml.CLASSICAL_ML_CLASSIFIER[model_key]
-    clf = model_class(random_state=42, has_pca=has_pca, **kwargs)
+    clf = model_class(random_state=42, has_pca=has_pca, class_weight=class_weight,**kwargs)
     clf.fit(X_train, y_train)
     X_val, y_val = dm.get_full_arrays(stage='val')
     
@@ -101,11 +107,25 @@ def run_classical_training(model_key="rf", task="neutralization", oversampling_r
     run.finish()
 
 if __name__ == "__main__":
-    # You can iterate through your registry to compare models
-    for model in ["rf", "knn", "lr", "nb", "svm"]:
-        for task in ["neutralization", "binding"]:
-            for has_pca in [False, True]:
-                for oversampling_ratio in [1, 2]:
-                    for has_synthetic_cdr in [False, True]:
-                        run_classical_training(model_key=model, has_pca=has_pca, task=task, oversampling_ratio=oversampling_ratio, has_synthetic_cdr=has_synthetic_cdr)
-        
+    
+    for task in ["neutralization", "binding"]:
+        for has_pca in [False, True]:
+            for oversampling_ratio in [1, 2]:
+                for has_synthetic_cdr in [False, True]:
+
+                    for model in ["rf", "xgb", "knn", "lr", "nb", "svm"]:
+                        model_cls = classical_ml.CLASSICAL_ML_CLASSIFIER[model]
+                        sig = inspect.signature(model_cls)
+                        supports_weights = 'class_weight' in sig.parameters or model == "xgb"
+                        
+                        weight_scenarios: list[dict[int, float]] = [
+                            {0: 2.0, 1: 1.0},  # Punish negatives more
+                            {0: 1.5, 1: 1.0},
+                            {0: 1.0, 1: 1.0}, # Baseline
+                        ]
+                        
+                        if not supports_weights:
+                            weight_scenarios = [{0: 1.0, 1: 1.0}] # Force only one run
+                        for class_weight in weight_scenarios:
+                            run_classical_training(model_key=model, has_pca=has_pca, task=task, oversampling_ratio=oversampling_ratio, has_synthetic_cdr=has_synthetic_cdr, class_weight=class_weight)
+    

@@ -7,6 +7,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression as ScikitLR
 from sklearn.naive_bayes import GaussianNB
 from sklearn.calibration import CalibratedClassifierCV
+from xgboost import XGBClassifier
 from typing import Any, Callable, Type, Union, cast
 from sklearn.decomposition import PCA
 import numpy as np
@@ -15,13 +16,15 @@ import joblib
 from etc import constants_training
 from pathlib import Path
 from src.utils.logging_module import get_logging
-
+import inspect 
 logger = get_logging(__name__)
+
+BASELINE_CLASSWEIGHT = {0: 1, 1: 1}
 
 ClassifierType = Union[Type[ClassifierMixin], CalibratedClassifierCV]
 
 class ClassicMlClassifer:
-    def __init__(self, classifier_model: ClassifierType, has_pca: bool = False, **kwargs: Any) -> None:
+    def __init__(self, classifier_model: ClassifierType, has_pca: bool = False, random_state: int = 42, class_weight=BASELINE_CLASSWEIGHT,**kwargs: Any) -> None:
         """Initialize the preprocessing steps for a Classifier ML"
 
         Args:
@@ -39,18 +42,32 @@ class ClassicMlClassifer:
             steps.append(("scaler", self.scaler_cls()))
 
         if has_pca:
-            steps.append(("pca", PCA(n_components=constants_training.PCA_N_COMPONENTS, random_state=42))) # Reduce 32k to n uncorrelated features    
+            steps.append(("pca", PCA(n_components=constants_training.PCA_N_COMPONENTS, random_state=random_state))) # Reduce 32k to n uncorrelated features    
         
         if isinstance(classifier_model, type):
             if not issubclass(classifier_model, BaseEstimator):
                 raise TypeError(f"{classifier_model} must be a Scikit-Learn Class.")
             
-            model_instance = cast(Any, classifier_model)(**kwargs)
+            if classifier_model.__name__ == 'XGBClassifier' and 'class_weight' in kwargs:
+                cw = class_weight
+                if isinstance(cw, dict):
+                    # Convert {0:1, 1:5} to the ratio 5.0
+                    kwargs['scale_pos_weight'] = cw[1] / cw[0]
+                    
+            # 3. Filter kwargs to only those the model actually accepts
+            sig = inspect.signature(classifier_model)
+            final_kwargs = {k: v for k, v in kwargs.items() if k in sig.parameters}
+            
+            # Add random_state if the model accepts it
+            if 'random_state' in sig.parameters:
+                final_kwargs['random_state'] = random_state
+
+            model_instance = cast(Any, classifier_model)(**final_kwargs)
             steps.append(("cls", model_instance))
         else:
             # It's an instance (like CalibratedClassifierCV), use it directly
             steps.append(("cls", classifier_model))
-        
+        self.class_weight = class_weight
         self.model = Pipeline(steps)
         
     def __str__(self) -> str:
@@ -90,12 +107,12 @@ class ClassicMlClassifer:
         logger.info(f"Model loaded from {path}")
 
 class KNearestNeighbors(ClassicMlClassifer):
-    def __init__(self, random_state: int | None = 42, has_pca:bool=False, **kwargs: object) -> None:
-        super().__init__(KNeighborsClassifier, has_pca=has_pca, **kwargs)
+    def __init__(self, random_state: int  = 42, has_pca:bool=False,  class_weight=BASELINE_CLASSWEIGHT, **kwargs: object) -> None:
+        super().__init__(KNeighborsClassifier, random_state=random_state, has_pca=has_pca,  class_weight=class_weight, **kwargs)
         self.support_sample_weight = False
         
 class SupportVectorMachine(ClassicMlClassifer):
-    def __init__(self, random_state: int | None = 42, has_pca:bool=False, **kwargs: Any) -> None:
+    def __init__(self, random_state: int | None = 42, has_pca:bool=False, class_weight=BASELINE_CLASSWEIGHT, **kwargs: Any) -> None:
         # 1. Clean up kwargs for LinearSVC
         kwargs.pop('probability', None) 
         
@@ -105,25 +122,29 @@ class SupportVectorMachine(ClassicMlClassifer):
         calibrated_model = CalibratedClassifierCV(base_model, cv=3) 
         
         # 3. Pass the instance to super
-        super().__init__(classifier_model=calibrated_model, max_iter=constants_training.SVM_MAX_ITER, has_pca=has_pca)
+        super().__init__(classifier_model=calibrated_model, max_iter=constants_training.SVM_MAX_ITER, has_pca=has_pca,  class_weight=class_weight)
         
 class RandomForest(ClassicMlClassifer):
-    def __init__(self, random_state: int | None = 42, has_pca:bool=False, **kwargs: object) -> None:
-        super().__init__(RandomForestClassifier, random_state=random_state, has_pca=has_pca,**kwargs)
+    def __init__(self, random_state: int = 42, has_pca:bool=False,  class_weight=BASELINE_CLASSWEIGHT, **kwargs: object) -> None:
+        super().__init__(RandomForestClassifier, random_state=random_state, has_pca=has_pca, class_weight=class_weight, **kwargs)
 
 class LogisticRegression(ClassicMlClassifer):
-    def __init__(self, random_state: int | None = 42, has_pca:bool=False, **kwargs: object) -> None:
-        super().__init__(ScikitLR, random_state=random_state, has_pca=has_pca, **kwargs)
+    def __init__(self, random_state: int = 42, has_pca:bool=False, class_weight=BASELINE_CLASSWEIGHT, **kwargs: object) -> None:
+        super().__init__(ScikitLR, random_state=random_state, has_pca=has_pca,  class_weight=class_weight, **kwargs)
 
 class NaiveBayes(ClassicMlClassifer):
-    def __init__(self, random_state: int | None = 42, has_pca: bool = False, **kwargs: object) -> None:
-        super().__init__(GaussianNB, has_pca=has_pca, **kwargs)
+    def __init__(self, random_state: int = 42, has_pca: bool = False, class_weight=BASELINE_CLASSWEIGHT, **kwargs: object) -> None:
+        super().__init__(GaussianNB, random_state=random_state, has_pca=has_pca, class_weight=class_weight, **kwargs)
 
+class XGBoost(ClassicMlClassifer):
+    def __init__(self, random_state: int  = 42, has_pca: bool = False, class_weight=BASELINE_CLASSWEIGHT, **kwargs: object) -> None:
+        super().__init__(XGBClassifier, random_state=random_state, has_pca=has_pca, class_weight=class_weight, **kwargs)
 
 CLASSICAL_ML_CLASSIFIER: dict[str, Callable[...,ClassicMlClassifer]] = {
     "knn" : KNearestNeighbors,
     "lr" : LogisticRegression,
     "rf" : RandomForest,
     "svm" : SupportVectorMachine,
-    "nb" : NaiveBayes
+    "nb" : NaiveBayes,
+    "xgb" : XGBoost
 }
