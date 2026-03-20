@@ -2,9 +2,10 @@ import pandas as pd
 from pathlib import Path
 from abc import ABC, abstractmethod
 from src.utils.logging_module import get_logging
-from etc import constants_training
+from etc import constants_training, constants_labels
 import traceback
 from typing import Union
+
 logger = get_logging(__name__)
 
 class preprocessor_worker(ABC):
@@ -17,6 +18,12 @@ class preprocessor_worker(ABC):
     def transform(self, chunk: Union[pd.DataFrame, pd.Series]) -> pd.DataFrame:
         pass
     
+    
+    def data_cleaning(self, chunk: Union[pd.DataFrame, pd.Series]):
+        # Ensure chunk is always a DataFrame
+        if isinstance(chunk, pd.Series):
+            chunk = pd.DataFrame([chunk])
+        return chunk
     
     def run_pipeline(self, input_path: Path, output_path: Path) -> bool:
         ith: int = 0

@@ -42,22 +42,12 @@ GROUPED_RAW = [BINDING_YES_RAW, BINDING_NOT_RAW, NEUTRAL_YES_RAW, NEUTRAL_NOT_RA
 
 LABEL_MAPPING = {
     "binding": {
-        "raw": {
-            "yes": BINDING_YES_RAW,
-            "no": BINDING_NOT_RAW,
-        }, "finished" :{
             "yes": BINDING_YES_LABEL, 
-            "not": BINDING_NOT_LABEL    
-        }
+            "not": BINDING_NOT_LABEL 
     }, 
-    "neutralization": {
-        "raw": {
-            "yes": NEUTRAL_YES_RAW,
-            "no": NEUTRAL_NOT_RAW,
-        }, "finished" : {     
+    "neutralization": {    
             "yes": NEUTRAL_YES_LABEL, 
             "not": NEUTRAL_NOT_LABEL
-        }
     }
 }
 

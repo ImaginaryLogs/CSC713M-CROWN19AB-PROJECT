@@ -82,17 +82,14 @@ class Label_Preprocess(preprocessor_worker):
             return 1 if not (self.encode_binding_yes_status(row, name) or self.encode_binding_not_status(row, name)) else 0
     
     def get_existing_data(self, chunk: pd.DataFrame, col: str) -> pd.DataFrame:
-        return chunk[chunk[col].notna() & (chunk[col]) != 'ND']
+        mask = (chunk[col].notna()) & (chunk[col] != 'ND')
+        return chunk[mask]
     
-    def data_cleaning(self, chunk: pd.DataFrame) -> pd.DataFrame:
-        for genetic_seq in constants_labels.EXTRACTABLE_BIOSEQUENCE_FEATURES:
-            chunk = self.get_existing_data(chunk, genetic_seq)
-        return chunk
+    
     
     def transform(self, chunk: pd.DataFrame) -> pd.DataFrame:
-        chunk = self.data_cleaning(chunk)
         final_chunk = pd.DataFrame()
-        
+        chunk = self.data_cleaning(chunk)
         # For each feature, apply the necessary function
         # So here, for each label, apply the encoder
         for (ith, (outlabel, label_encoder)) in enumerate(self.translation_array):

@@ -48,13 +48,9 @@ class Motif_Conjoint_Preprocess(preprocessor_worker):
         return triad_df
     
     def get_existing_data(self, chunk: pd.DataFrame, col: str) -> pd.DataFrame:
-        return chunk[chunk[col].notna() & (chunk[col]) != 'ND']
+        mask = (chunk[col].notna()) & (chunk[col] != 'ND')
+        return chunk[mask]
     
-    def data_cleaning(self, chunk: pd.DataFrame) -> pd.DataFrame:
-        chunk = chunk.drop(columns=constants_labels.IGNORED_FEATURES)
-        for genetic_seq in constants_labels.EXTRACTABLE_BIOSEQUENCE_FEATURES:
-            chunk = self.get_existing_data(chunk, genetic_seq)
-        return chunk
     
     
     def transform(self, chunk: pd.DataFrame) -> pd.DataFrame:

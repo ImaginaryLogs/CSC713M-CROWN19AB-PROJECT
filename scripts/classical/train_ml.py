@@ -16,34 +16,30 @@ from typing import Any
 
 logger = logging_module.get_logging(__name__)
 
-def run_classical_training(model_key="rf", task="neutralization", oversampling_ratio:int = 1, has_synthetic_cdr: bool = False, **kwargs: Any):
+def run_classical_training(model_key="rf", task="neutralization", oversampling_ratio:int = 1, has_synthetic_cdr: bool = False, has_pca: bool = False, **kwargs: Any):
     set_seed.set_seed()
     PROCESSED_DIR = constants_training.ART_FEATURES_DIR
-    TASK_DIR = PROCESSED_DIR / task # 'binding' or 'neutralization'
-    
-    # Check if this specific task's MDS exists
-    if not (TASK_DIR / "train" / "index.json").exists():
-        # feature_files = [
-        #     PROCESSED_DIR / "motif_3kmer_features.csv",
-        #     PROCESSED_DIR / "biochemical_features.csv"
-        # ]
-        # labels_path = PROCESSED_DIR / "labels.csv"
-        
-        serialize.serialize_etl_data(constants_training.RAWDATA_FILE, PROCESSED_DIR)
-        
-        # serialize.serialize_all_data(
-        #     feature_csvs=feature_files, # K-mer first (it's the biggest)
-        #     label_csv=labels_path,
-        #     output_base=PROCESSED_DIR,
-        #     tasks_config=MY_TASKS,
-        #     chunk_size=constants_training.CHUNK_SIZE
-        # )
-    
-    # Point DataModule to the task-specific subfolders
+    data_config_name = f"{task}_ov{oversampling_ratio}_syn{has_synthetic_cdr}"
+    TASK_DIR = PROCESSED_DIR / data_config_name 
+    k = not ((TASK_DIR / "train" / "index.json").exists())
+    logger.info(f"{k}")
+    if not ((TASK_DIR / "train" / "index.json").exists()):
+        logger.info(f"Generating NEW shards for {data_config_name}...")
+        serialize.serialize_etl_data(
+            constants_training.RAWDATA_FILE, 
+            TASK_DIR,
+            task,
+            oversample_factor=oversampling_ratio, 
+            use_synthetic_data=has_synthetic_cdr
+        )
+    else:
+        logger.info(f"Using EXISTING shards for {data_config_name}")
+
+    # Point DataModule to the unique folder
     dm = DataModule(
         train_dir=str(TASK_DIR / "train"),
         val_dir=str(TASK_DIR / "val"),
-        test_dir=str(TASK_DIR / "val") 
+        test_dir=str(TASK_DIR / "test") 
     )
     
     logger.info("Setting up Streaming DataModule...")
@@ -65,13 +61,20 @@ def run_classical_training(model_key="rf", task="neutralization", oversampling_r
     run = wandb.init(
         project="CSC713M_MSINTSY",
         name=name,
-        config={"model": model_key, "group": "classical_ml", "task": task}
+        config={
+            "group": "classical_ml", 
+            "model": model_key, 
+            "task": task,
+            "has_pca": has_pca,
+            "has_synthetic_cdr": has_synthetic_cdr,
+            "oversampling_ratio": oversampling_ratio
+        }
     )
 
     # 6. Initialize and Train the Scikit-Learn Model
     logger.info(f"Training Classical Model: {model_key}")
     model_class = classical_ml.CLASSICAL_ML_CLASSIFIER[model_key]
-    clf = model_class(random_state=42, **kwargs)
+    clf = model_class(random_state=42, has_pca=has_pca, **kwargs)
     clf.fit(X_train, y_train)
     X_val, y_val = dm.get_full_arrays(stage='val')
     
@@ -99,7 +102,7 @@ def run_classical_training(model_key="rf", task="neutralization", oversampling_r
 
 if __name__ == "__main__":
     # You can iterate through your registry to compare models
-    for model in ["rf", "knn","lr", "nb", "svm"]:
+    for model in ["rf", "knn", "lr", "nb", "svm"]:
         for task in ["neutralization", "binding"]:
             for has_pca in [False, True]:
                 for oversampling_ratio in [1, 2]:

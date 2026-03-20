@@ -159,14 +159,9 @@ class Biochemical_Preprocess(preprocessor_worker):
             }
     
     def get_existing_data(self, chunk: pd.DataFrame, col: str) -> pd.DataFrame:
-        return chunk[chunk[col].notna() & (chunk[col] != 'ND')]
-    
-    def data_cleaning(self, chunk: pd.DataFrame) -> pd.DataFrame:
-        chunk = chunk.drop(columns=constants_labels.IGNORED_FEATURES)
-        for genetic_seq in constants_labels.EXTRACTABLE_BIOSEQUENCE_FEATURES:
-            chunk = self.get_existing_data(chunk, genetic_seq)
-        return chunk
-    
+        mask = (chunk[col].notna()) & (chunk[col] != 'ND')
+        return chunk[mask]
+
     
     def transform(self, chunk: pd.DataFrame) -> pd.DataFrame:
         chunk = self.data_cleaning(chunk)

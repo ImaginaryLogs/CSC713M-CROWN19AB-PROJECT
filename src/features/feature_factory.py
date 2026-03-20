@@ -5,7 +5,7 @@ from pathlib import Path
 from src.features import p01_label_preprocessor, p02_naive_preprocessor, p03_motif_3kmer_preprocessor, p04_motif_conjoint_preprocessor, p05_biochemical_preprocessor
 from src.utils import logging_module
 from src.utils.worker import preprocessor_worker
-
+import numpy as np
 logger = logging_module.get_logging(__name__)
 
 class FeatureType(Enum):
@@ -37,12 +37,21 @@ class FeatureFactory:
     
     def extract_features_from_row(self, row: Union[pd.DataFrame, pd.Series], types: list[FeatureType]):
         final: List[pd.DataFrame] = []
-        logger.info(f"Extracting information")
+
         for worker in types:
-            logger.info(f"Running {worker.name}")
             worker = self.get_worker(worker)
             final.append(worker.transform(row))
-        return pd.concat(final)
+        final_result = pd.concat(final, axis=1)
+        final_result = final_result.drop(labels=['name', 'Name'], errors='ignore')
+        final_result = final_result.select_dtypes(include=[np.number])
+        final_result = final_result.fillna(0.0)
+        # Ensure the final object is a flat NumPy array
+        if isinstance(final_result, pd.DataFrame):
+            return final_result.to_numpy().flatten().astype(np.float32)
+        elif isinstance(final_result, pd.Series):
+            return final_result.to_numpy().astype(np.float32)
+        
+        return np.array(final_result).astype(np.float32) 
     
     def run_multi_feature_pipeline(self, 
                                    input_path: Path, 
