@@ -9,3 +9,4 @@ notebooks/pipelines/p03_preprocessing/data/
 notebooks/pipelines/p04_model_selection_training/data/
 artifacts/*
 wandb
+runs/*

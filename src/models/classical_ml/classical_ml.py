@@ -89,9 +89,7 @@ class ClassicMlClassifer:
     
     def save(self, directory: str | Path | None = None , name: str | None = None) -> None:
         save_dir = Path(directory) if directory else constants_training.ART_MODELS_DIR
-        
         save_dir.mkdir(parents=True, exist_ok=True)
-        
         ml_name = name or self.__class__.__name__
         path = str(save_dir / f"{ml_name}.joblib")
         joblib.dump(self.model, path)
@@ -108,7 +106,13 @@ class ClassicMlClassifer:
 
 class KNearestNeighbors(ClassicMlClassifer):
     def __init__(self, random_state: int  = 42, has_pca:bool=False,  class_weight=BASELINE_CLASSWEIGHT, **kwargs: object) -> None:
-        super().__init__(KNeighborsClassifier, random_state=random_state, has_pca=has_pca,  class_weight=class_weight, **kwargs)
+        kwargs.pop('probability', None) 
+        
+        base_model = KNeighborsClassifier()
+        calibrated_model = CalibratedClassifierCV(base_model, cv=3) 
+        
+        # 3. Pass the instance to super
+        super().__init__(classifier_model=calibrated_model, max_iter=constants_training.SVM_MAX_ITER, has_pca=has_pca,  class_weight=class_weight)
         self.support_sample_weight = False
         
 class SupportVectorMachine(ClassicMlClassifer):
@@ -134,7 +138,14 @@ class LogisticRegression(ClassicMlClassifer):
 
 class NaiveBayes(ClassicMlClassifer):
     def __init__(self, random_state: int = 42, has_pca: bool = False, class_weight=BASELINE_CLASSWEIGHT, **kwargs: object) -> None:
-        super().__init__(GaussianNB, random_state=random_state, has_pca=has_pca, class_weight=class_weight, **kwargs)
+        kwargs.pop('probability', None) 
+        
+        base_model = GaussianNB()
+        calibrated_model = CalibratedClassifierCV(base_model, cv=3) 
+        
+        # 3. Pass the instance to super
+        super().__init__(classifier_model=calibrated_model, max_iter=constants_training.SVM_MAX_ITER, has_pca=has_pca,  class_weight=class_weight)
+       
 
 class XGBoost(ClassicMlClassifer):
     def __init__(self, random_state: int  = 42, has_pca: bool = False, class_weight=BASELINE_CLASSWEIGHT, **kwargs: object) -> None:

@@ -6,6 +6,7 @@ from src.features import p01_label_preprocessor, p02_naive_preprocessor, p03_mot
 from src.utils import logging_module
 from src.utils.worker import preprocessor_worker
 import numpy as np
+import itertools
 logger = logging_module.get_logging(__name__)
 
 class FeatureType(Enum):
@@ -27,6 +28,11 @@ class FeatureFactory:
             , FeatureType.MOTIF_CONJOINT : p04_motif_conjoint_preprocessor.Motif_Conjoint_Preprocess
             , FeatureType.BIOCHEMICAL : p05_biochemical_preprocessor.Biochemical_Preprocess
         }
+        
+
+        self.amino_acids = "ACDEFGHIKLMNPQRSTVWY" 
+        self.biosequence_cols = ['CDRH3', 'CDRL3', 'VHorVHH', 'VL'] 
+        self.triad_names = ["".join(p) for p in itertools.product("1234567", repeat=3)]
         
     def get_worker(self, feature_type: FeatureType, **kwargs):
         worker_class = self._registry.get(feature_type)
@@ -52,6 +58,38 @@ class FeatureFactory:
             return final_result.to_numpy().astype(np.float32)
         
         return np.array(final_result).astype(np.float32) 
+    
+    def get_names_for_type(self, feature_type: FeatureType) -> list[str]:
+        all_names = []
+
+        if feature_type == FeatureType.NAIVE:
+            for col in self.biosequence_cols:
+                all_names.append(f"{col}_length")
+                for aa in self.amino_acids:
+                    all_names.append(f"{col}_amino_acid_percentage_{aa}")
+            
+            all_names.extend(['S_RBD', 'S_NTD', 'S_S2', 'S_S1', 'N_Protein', 'Other_Spike', 'Unknown'])
+        elif feature_type == FeatureType.MOTIF_CONJOINT:
+            for col in self.biosequence_cols:
+                for triad in self.triad_names:
+                    all_names.append(f"{col}_CTD_{triad}")
+
+        elif feature_type == FeatureType.BIOCHEMICAL:
+            cdr_props = ["aliphatic_index", "boman_index", "isoelectric_point", "molecular_weight", "aromaticity"]
+            vhvl_props = ["aliphatic_index", "boman_index", "isoelectric_point", "molecular_weight", "aromaticity"]
+            
+            for col in ['CDRH3', 'CDRL3']:
+                all_names.extend([f"{col}_{p}" for p in cdr_props])
+            for col in ['VL', 'VHorVHH']:
+                all_names.extend([f"{col}_{p}" for p in vhvl_props])
+
+        return all_names
+    
+    def get_all_feature_names(self, selected_types: list[FeatureType]) -> list[str]:
+        full_list = []
+        for t in selected_types:
+            full_list.extend(self.get_names_for_type(t))
+        return full_list
     
     def run_multi_feature_pipeline(self, 
                                    input_path: Path, 

@@ -43,7 +43,7 @@ def convert_to_mds(feature_csv: Path, label_csv: Path, output_dir: Path, target_
     sample_feat = pd.read_csv(feature_csv, nrows=1)
     feature_cols = [c for c in sample_feat.columns if c != 'name']
     
-    columns = {'features': 'ndarray:float32', 'label': 'int'}
+    columns = {'features': 'ndarray:float32', 'label': 'int', 'name': 'str'}
 
     # 3. Write to MDS
     with MDSWriter(out=str(output_dir), columns=columns, compression='zstd') as out:
@@ -113,9 +113,9 @@ def _lightweight_split(
     task_out = output_base 
     
     writers = {
-            "train": MDSWriter(out=str(task_out / "train"), columns={'features': 'ndarray:float32', 'label': 'int'}, compression='zstd'),
-            "val": MDSWriter(out=str(task_out / "val"), columns={'features': 'ndarray:float32', 'label': 'int'}, compression='zstd'),
-            "test": MDSWriter(out=str(task_out / "test"), columns={'features': 'ndarray:float32', 'label': 'int'}, compression='zstd')
+            "train": MDSWriter(out=str(task_out / "train"), columns={'features': 'ndarray:float32', 'label': 'int', 'name': 'str'}, compression='zstd'),
+            "val": MDSWriter(out=str(task_out / "val"), columns={'features': 'ndarray:float32', 'label': 'int', 'name': 'str'}, compression='zstd'),
+            "test": MDSWriter(out=str(task_out / "test"), columns={'features': 'ndarray:float32', 'label': 'int', 'name': 'str'}, compression='zstd')
     }
     
     lookup = dict(zip(valid_meta['name'], strat_labels))
@@ -158,7 +158,7 @@ def _mds_writer(
     # We extract features only when we know we need them for a writer
     feats = factory_feature_extraction.extract_features_from_row(row, features)
     logger.info(f"{name} {feats.__str__()}")
-    meta["writers"][assigned_split].write({'features': feats, 'label': label})
+    meta["writers"][assigned_split].write({'features': feats, 'label': label, 'name': str(name)})
 
     # Augmentation (TRAIN ONLY)
     if assigned_split == "train" and label == 1:        
@@ -168,11 +168,11 @@ def _mds_writer(
             shuffled_row['CDRH3'] = negative_generator.safe_shuffle(row['CDRH3'], local_rng)
             shuffled_row['CDRL3'] = negative_generator.safe_shuffle(row['CDRL3'], local_rng)
             shuffled_feats = factory_feature_extraction.extract_features_from_row(shuffled_row, features)
-            meta["writers"]["train"].write({'features': shuffled_feats, 'label': 0})
+            meta["writers"]["train"].write({'features': shuffled_feats, 'label': 0, 'name': f"{name}_syn"})
     elif assigned_split == 'train' and label == 0:
         # B. Oversampling Negative Cases (need to rerun since negatives since class imbalance)
-        for _ in range(oversample_factor - 1):
-            meta["writers"]["train"].write({'features': feats, 'label': label})
+        for i in range(oversample_factor - 1):
+            meta["writers"]["train"].write({'features': feats, 'label': label, 'name': f"{name}_ov{i}"})
 
 def is_valid_sequence(seq) -> bool:
     """Checks if a sequence is present and biologically processable."""
@@ -209,6 +209,7 @@ def serialize_etl_data(
     raw_csv: Path,
     output_base: Path,
     task: str,
+    feature_types: list[feature_factory.FeatureType],
     oversample_factor: int = 1,
     use_synthetic_data = False
 ):
@@ -220,15 +221,10 @@ def serialize_etl_data(
     processed_labels_df = label_worker.transform(df_raw)
     
     factory = feature_factory.FeatureFactory()
-    types = [
-        feature_factory.FeatureType.NAIVE,
-        feature_factory.FeatureType.MOTIF_CONJOINT,
-        feature_factory.FeatureType.BIOCHEMICAL
-    ]
     
     meta_tasks: Dict[str, TaskMetadata] = _lightweight_split(processed_labels_df, output_base, task)
     try:
-        _task_delegation(raw_csv, meta_tasks, factory, types, oversample_factor, use_synthetic_data)
+        _task_delegation(raw_csv, meta_tasks, factory, feature_types, oversample_factor, use_synthetic_data)
     except Exception as e:
         logger.error(traceback.format_exc())
     finally:
@@ -283,9 +279,9 @@ def serialize_all_data(
             "val_set": set(val_names),
             "test_set": set(test_names), # New: The 'Blind' Set
             "writers": {
-                "train": MDSWriter(out=str(task_out / "train"), columns={'features': 'ndarray:float32', 'label': 'int'}, compression='zstd'),
-                "val": MDSWriter(out=str(task_out / "val"),  columns={'features': 'ndarray:float32', 'label': 'int'}, compression='zstd'),
-                "test": MDSWriter(out=str(task_out / "test"), columns={'features': 'ndarray:float32', 'label': 'int'}, compression='zstd')
+                "train": MDSWriter(out=str(task_out / "train"), columns={'features': 'ndarray:float32', 'label': 'int', 'name': 'str'}, compression='zstd'),
+                "val": MDSWriter(out=str(task_out / "val"),  columns={'features': 'ndarray:float32', 'label': 'int',  'name': 'str'}, compression='zstd'),
+                "test": MDSWriter(out=str(task_out / "test"), columns={'features': 'ndarray:float32', 'label': 'int',  'name': 'str'}, compression='zstd')
             }
         }
 

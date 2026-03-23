@@ -1,3 +1,10 @@
+[project]
+name = "csc713m-msintsy"
+version = "0.1.0"
+dependencies = [
+    "shap>=0.49.1",
+]
+
 [dependency-groups]
 dev = [
     "antiberty>=0.1.3",

@@ -17,10 +17,20 @@ BASELINE_CLASSWEIGHT = {0: 1.0, 1: 1.0}
 
 logger = logging_module.get_logging(__name__)
 
-def run_classical_training(model_key="rf", task="neutralization", oversampling_ratio:int = 1, has_synthetic_cdr: bool = False, has_pca: bool = False, class_weight: dict[int, float] = BASELINE_CLASSWEIGHT,**kwargs: Any):
+def run_classical_training_orchestrator(
+    model_key="rf", 
+    task="neutralization", 
+    oversampling_ratio:int = 1, 
+    has_synthetic_cdr: bool = False, 
+    has_pca: bool = False, 
+    class_weight: dict[int, float] = BASELINE_CLASSWEIGHT,
+    selected_features: list[FeatureType] = [FeatureType.NAIVE],
+    **kwargs: Any):
+    
     set_seed.set_seed()
     PROCESSED_DIR = constants_training.ART_FEATURES_DIR
-    data_config_name = f"{task}_ov{oversampling_ratio}_syn{has_synthetic_cdr}"
+    feature_slug = "_".join([t.name.lower() for t in selected_features])
+    data_config_name = f"{task}_ds{feature_slug}_ov{oversampling_ratio}_syn{has_synthetic_cdr}"
     TASK_DIR = PROCESSED_DIR / data_config_name 
     k = not ((TASK_DIR / "train" / "index.json").exists())
     logger.info(f"{k}")
@@ -30,6 +40,7 @@ def run_classical_training(model_key="rf", task="neutralization", oversampling_r
             constants_training.RAWDATA_FILE, 
             TASK_DIR,
             task,
+            feature_types=selected_features,
             oversample_factor=oversampling_ratio, 
             use_synthetic_data=has_synthetic_cdr
         )
@@ -57,7 +68,7 @@ def run_classical_training(model_key="rf", task="neutralization", oversampling_r
     # Since scikit-learn needs the full matrix, we collect it from the stream
 
     logger.info(f"Collecting {len(dm.train_dataset)} samples...")
-    X_train, y_train = dm.get_full_arrays(stage="train")
+    X_train, y_train, _ = dm.get_full_arrays(stage="train")
     logger.info("WandB Initializiation...")
     # 5. Initialize WandB for Experiment Tracking
     wandb_setter.setup_wandb()
@@ -82,7 +93,7 @@ def run_classical_training(model_key="rf", task="neutralization", oversampling_r
     model_class = classical_ml.CLASSICAL_ML_CLASSIFIER[model_key]
     clf = model_class(random_state=42, has_pca=has_pca, class_weight=class_weight,**kwargs)
     clf.fit(X_train, y_train)
-    X_val, y_val = dm.get_full_arrays(stage='val')
+    X_val, y_val, names_val = dm.get_full_arrays(stage='val')
     
     assert isinstance(X_val, np.ndarray)
     assert isinstance(y_val, np.ndarray)
@@ -98,6 +109,15 @@ def run_classical_training(model_key="rf", task="neutralization", oversampling_r
     )
     logger.info(met)
     logger.info(f"{kwargs}")
+    
+    logger.info(f"Generating detailed error audit for {model_key}...")
+    metrics.log_confusion_cases(
+        model_key=model_key,
+        names=names_val, 
+        y_actual=y_val,
+        y_probas=y_probas,
+        n_top=10
+    )
 
     # 8. Log Results to WandB
     wandb.log(met)
@@ -106,13 +126,19 @@ def run_classical_training(model_key="rf", task="neutralization", oversampling_r
     clf.save(directory=constants_training.ART_MODELS_DIR, name=name)
     run.finish()
 
-if __name__ == "__main__":
-    
+types = [
+    FeatureType.NAIVE,
+    FeatureType.MOTIF_CONJOINT,
+    FeatureType.BIOCHEMICAL
+]
+
+
+
+if __name__ == "__main__":    
     for task in ["neutralization", "binding"]:
         for has_pca in [False, True]:
             for oversampling_ratio in [1, 2]:
                 for has_synthetic_cdr in [False, True]:
-
                     for model in ["rf", "xgb", "knn", "lr", "nb", "svm"]:
                         model_cls = classical_ml.CLASSICAL_ML_CLASSIFIER[model]
                         sig = inspect.signature(model_cls)
@@ -127,5 +153,5 @@ if __name__ == "__main__":
                         if not supports_weights:
                             weight_scenarios = [{0: 1.0, 1: 1.0}] # Force only one run
                         for class_weight in weight_scenarios:
-                            run_classical_training(model_key=model, has_pca=has_pca, task=task, oversampling_ratio=oversampling_ratio, has_synthetic_cdr=has_synthetic_cdr, class_weight=class_weight)
+                            run_classical_training_orchestrator(model_key=model, has_pca=has_pca, task=task, oversampling_ratio=oversampling_ratio, has_synthetic_cdr=has_synthetic_cdr, class_weight=class_weight, selected_features=types)
     

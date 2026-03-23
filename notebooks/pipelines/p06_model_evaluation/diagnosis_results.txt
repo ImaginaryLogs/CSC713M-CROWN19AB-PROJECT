@@ -1,0 +1,144 @@
+     run_id                             name model            task has_pca  ...  val_precision   val_acc   val_mcc   w0   w1
+0  dk18knxm     neutral-rf-235220-F8-Pom-Pom    rf  neutralization   False  ...       0.727044  0.709990  0.332270  1.0  1.0
+1  718wlqd3     neutral-rf-235320-F8-Mualani    rf  neutralization   False  ...       0.727044  0.709990  0.332270  1.0  1.0
+2  0npsmai8       neutral-rf-235420-F0-Topaz    rf  neutralization   False  ...       0.727044  0.709990  0.332270  1.0  1.0
+3  n538boix      neutral-xgb-235620-F8-Varka   xgb  neutralization   False  ...       0.742424  0.701261  0.328747  1.0  1.0
+4  259ucx3g       neutral-xgb-235720-F8-Jade   xgb  neutralization   False  ...       0.742424  0.701261  0.328747  1.0  1.0
+5  rcfgf8r4      neutral-xgb-235720-F0-Varka   xgb  neutralization   False  ...       0.742424  0.701261  0.328747  1.0  1.0
+6  7xofqu1t     neutral-knn-235820-F8-Bronya   knn  neutralization   False  ...       0.682726  0.661494  0.192860  1.0  1.0
+7  8mir6g74  neutral-knn-235920-F8-Dainsleif   knn  neutralization   False  ...       0.682726  0.661494  0.192860  1.0  1.0
+8  qheerb6y     neutral-knn-000021-F0-Childe   knn  neutralization   False  ...       0.682726  0.661494  0.192860  1.0  1.0
+9  y7qiquyh      neutral-lr-000021-F8-Himeko    lr  neutralization   False  ...       0.706056  0.630456  0.189882  1.0  1.0
+
+[10 rows x 15 columns]Index(['run_id', 'name', 'model', 'task', 'has_pca', 'oversample',
+       'has_synthetic', 'class_weight', 'val_f1', 'val_recall',
+       'val_precision', 'val_acc', 'val_mcc', 'w0', 'w1'],
+      dtype='object')                         run_name model    category                   feature       delta     task
+0   binding-rf-031521-F8-Clorinde    rf  FP_Drivers    CDRH3_molecular_weight  327.643066  binding
+1   binding-rf-031521-F8-Clorinde    rf  FP_Drivers  VHorVHH_molecular_weight  325.727539  binding
+2   binding-rf-031521-F8-Clorinde    rf  FP_Drivers       VL_molecular_weight   49.552734  binding
+3   binding-rf-031521-F8-Clorinde    rf  FP_Drivers    CDRL3_molecular_weight   -6.733643  binding
+4   binding-rf-031521-F8-Clorinde    rf  FP_Drivers     CDRL3_aliphatic_index   -3.256821  binding
+5   binding-rf-031521-F8-Clorinde    rf  FP_Drivers     CDRH3_aliphatic_index    3.090076  binding
+6   binding-rf-031521-F8-Clorinde    rf  FP_Drivers              CDRH3_length    2.400000  binding
+7   binding-rf-031521-F8-Clorinde    rf  FP_Drivers                 VL_length    2.050003  binding
+8   binding-rf-031521-F8-Clorinde    rf  FP_Drivers   VHorVHH_aliphatic_index    1.813507  binding
+9   binding-rf-031521-F8-Clorinde    rf  FP_Drivers      VL_isoelectric_point    1.314137  binding
+10  binding-rf-031521-F8-Clorinde    rf  FN_Drivers  VHorVHH_molecular_weight  508.553711  binding
+11  binding-rf-031521-F8-Clorinde    rf  FN_Drivers    CDRH3_molecular_weight  345.106812  binding
+12  binding-rf-031521-F8-Clorinde    rf  FN_Drivers       VL_molecular_weight  -77.535156  binding
+13  binding-rf-031521-F8-Clorinde    rf  FN_Drivers     CDRL3_aliphatic_index   27.160606  binding
+14  binding-rf-031521-F8-Clorinde    rf  FN_Drivers    CDRL3_molecular_weight  -24.374512  binding
+15  binding-rf-031521-F8-Clorinde    rf  FN_Drivers     CDRH3_aliphatic_index   21.059813  binding
+16  binding-rf-031521-F8-Clorinde    rf  FN_Drivers   VHorVHH_aliphatic_index  -10.391632  binding
+17  binding-rf-031521-F8-Clorinde    rf  FN_Drivers        VL_aliphatic_index    5.449471  binding
+18  binding-rf-031521-F8-Clorinde    rf  FN_Drivers                 VL_length    4.000000  binding
+19  binding-rf-031521-F8-Clorinde    rf  FN_Drivers              CDRH3_length    3.300000  binding
+20   binding-rf-031621-F8-Pom-Pom    rf  FP_Drivers    CDRH3_molecular_weight  327.643066  binding
+21   binding-rf-031621-F8-Pom-Pom    rf  FP_Drivers  VHorVHH_molecular_weight  325.727539  binding
+22   binding-rf-031621-F8-Pom-Pom    rf  FP_Drivers       VL_molecular_weight   49.552734  binding
+23   binding-rf-031621-F8-Pom-Pom    rf  FP_Drivers    CDRL3_molecular_weight   -6.733643  binding
+24   binding-rf-031621-F8-Pom-Pom    rf  FP_Drivers     CDRL3_aliphatic_index   -3.256821  binding
+25   binding-rf-031621-F8-Pom-Pom    rf  FP_Drivers     CDRH3_aliphatic_index    3.090076  binding
+26   binding-rf-031621-F8-Pom-Pom    rf  FP_Drivers              CDRH3_length    2.400000  binding
+27   binding-rf-031621-F8-Pom-Pom    rf  FP_Drivers                 VL_length    2.050003  binding
+28   binding-rf-031621-F8-Pom-Pom    rf  FP_Drivers   VHorVHH_aliphatic_index    1.813507  binding
+29   binding-rf-031621-F8-Pom-Pom    rf  FP_Drivers      VL_isoelectric_point    1.314137  binding              task    category                   feature    avg_delta    delta_std  run_count
+34         binding  FP_Drivers       VL_molecular_weight  1275.460938  1757.887695        144
+29         binding  FP_Drivers  VHorVHH_molecular_weight   480.302185  1391.910889        144
+66  neutralization  FP_Drivers  VHorVHH_molecular_weight   410.232513  1254.862793        135
+70  neutralization  FP_Drivers       VL_molecular_weight   160.545822  1590.321411        135
+3          binding  FN_Drivers    CDRH3_molecular_weight   107.032822   237.638519        108
+52  neutralization  FN_Drivers       VL_molecular_weight    56.437069  1397.869141        129
+57  neutralization  FP_Drivers    CDRH3_molecular_weight    50.666706   214.255798        132
+28         binding  FP_Drivers            VHorVHH_length    15.360811    16.836956        111
+30         binding  FP_Drivers        VL_aliphatic_index     9.995573    11.096691        120
+33         binding  FP_Drivers                 VL_length     6.205405    13.838996        111=== MSINTSY MODEL DIAGNOSIS REPORT ===
+
+--- TOP UNIQUE RUNS (BY PERFORMANCE) ---
+                               name model    task   val_f1  val_recall  w0  w1  oversample
+       binding-xgb-031921-F8-Himeko   xgb binding 0.978002    0.997792 1.0 1.0           1
+        binding-xgb-032021-F8-Sampo   xgb binding 0.978002    0.997792 1.0 1.0           1
+        binding-xgb-032021-F0-Herta   xgb binding 0.978002    0.997792 1.0 1.0           1
+      binding-xgb-052321-F9-Diamond   xgb binding 0.977682    0.999264 1.0 1.0           1
+binding-xgb-052421-F9-JeanGunnhildr   xgb binding 0.977682    0.999264 1.0 1.0           1
+      binding-xgb-052421-F1-Huaiyan   xgb binding 0.977682    0.999264 1.0 1.0           1
+  binding-rf-041121-F12-Trailblazer    rf binding 0.977666    0.998528 1.0 1.0           2
+        binding-rf-041221-F12-HuTao    rf binding 0.977666    0.998528 1.0 1.0           2
+          binding-rf-041221-F4-Apep    rf binding 0.977666    0.998528 1.0 1.0           2
+       binding-xgb-041321-F12-Robin   xgb binding 0.977650    0.997792 1.0 1.0           2
+
+=============== TASK: NEUTRALIZATION ===============
+Model: RF          
+  > Best Run: neutral-rf-235220-F8-Pom-Pom
+  > Metrics:  F1: 0.7945 | Recall: 0.8758 | Prec: 0.7270
+  > Setup:    {'oversample': 1, 'has_pca': False, 'class_weight': '{0: 1.0, 1: 1.0}', 'has_synthetic': False, 'w0': 1.0, 'w1': 1.0}
+  > Consistency: Mean F1 of 0.7945 over 1 runs
+Model: XGB         
+  > Best Run: neutral-xgb-235620-F8-Varka
+  > Metrics:  F1: 0.7778 | Recall: 0.8167 | Prec: 0.7424
+  > Setup:    {'oversample': 1, 'has_pca': False, 'class_weight': '{0: 1.0, 1: 1.0}', 'has_synthetic': False, 'w0': 1.0, 'w1': 1.0}
+  > Consistency: Mean F1 of 0.7778 over 1 runs
+Model: KNN         
+  > Best Run: neutral-knn-021021-F9-Yunli
+  > Metrics:  F1: 0.7791 | Recall: 0.8818 | Prec: 0.6978
+  > Setup:    {'oversample': 1, 'has_pca': True, 'class_weight': '{0: 1.0, 1: 1.0}', 'has_synthetic': False, 'w0': 1.0, 'w1': 1.0}
+  > Consistency: Mean F1 of 0.7791 over 1 runs
+Model: LR          
+  > Best Run: neutral-lr-021221-F9-BlackSwan
+  > Metrics:  F1: 0.7549 | Recall: 0.8424 | Prec: 0.6839
+  > Setup:    {'oversample': 1, 'has_pca': True, 'class_weight': '{0: 1.0, 1: 1.0}', 'has_synthetic': False, 'w0': 1.0, 'w1': 1.0}
+  > Consistency: Mean F1 of 0.7549 over 1 runs
+Model: NB          
+  > Best Run: neutral-nb-000421-F8-Luocha
+  > Metrics:  F1: 0.7806 | Recall: 1.0000 | Prec: 0.6402
+  > Setup:    {'oversample': 1, 'has_pca': False, 'class_weight': '{0: 1.0, 1: 1.0}', 'has_synthetic': False, 'w0': 1.0, 'w1': 1.0}
+  > Consistency: Mean F1 of 0.7806 over 1 runs
+Model: SVM         
+  > Best Run: neutral-svm-000721-F8-RaidenEi
+  > Metrics:  F1: 0.7761 | Recall: 0.9742 | Prec: 0.6449
+  > Setup:    {'oversample': 1, 'has_pca': False, 'class_weight': '{0: 1.0, 1: 1.0}', 'has_synthetic': False, 'w0': 1.0, 'w1': 1.0}
+  > Consistency: Mean F1 of 0.7761 over 1 runs
+Model: DEEP_NN     
+  > Best Run: neutral-deepNn-100521-F0-Istaroth
+  > Metrics:  F1: 0.7817 | Recall: 0.9985 | Prec: 0.6423
+  > Setup:    {'oversample': 1, 'class_weight': "{'0': 1, '1': 1}", 'w0': 1.0, 'w1': 1.0}
+  > Consistency: Mean F1 of 0.7774 over 8 runs
+
+=============== TASK: BINDING ===============
+Model: RF          
+  > Best Run: binding-rf-041121-F12-Trailblazer
+  > Metrics:  F1: 0.9777 | Recall: 0.9985 | Prec: 0.9577
+  > Setup:    {'oversample': 2, 'has_pca': False, 'class_weight': '{0: 1.0, 1: 1.0}', 'has_synthetic': False, 'w0': 1.0, 'w1': 1.0}
+  > Consistency: Mean F1 of 0.9777 over 1 runs
+Model: XGB         
+  > Best Run: binding-xgb-031921-F8-Himeko
+  > Metrics:  F1: 0.9780 | Recall: 0.9978 | Prec: 0.9590
+  > Setup:    {'oversample': 1, 'has_pca': False, 'class_weight': '{0: 1.0, 1: 1.0}', 'has_synthetic': False, 'w0': 1.0, 'w1': 1.0}
+  > Consistency: Mean F1 of 0.9780 over 1 runs
+Model: KNN         
+  > Best Run: binding-knn-032121-F8-Kinich
+  > Metrics:  F1: 0.9766 | Recall: 1.0000 | Prec: 0.9544
+  > Setup:    {'oversample': 1, 'has_pca': False, 'class_weight': '{0: 1.0, 1: 1.0}', 'has_synthetic': False, 'w0': 1.0, 'w1': 1.0}
+  > Consistency: Mean F1 of 0.9766 over 1 runs
+Model: LR          
+  > Best Run: binding-lr-052821-F9-Nahida
+  > Metrics:  F1: 0.9763 | Recall: 1.0000 | Prec: 0.9537
+  > Setup:    {'oversample': 1, 'has_pca': True, 'class_weight': '{0: 1.0, 1: 1.0}', 'has_synthetic': False, 'w0': 1.0, 'w1': 1.0}
+  > Consistency: Mean F1 of 0.9763 over 1 runs
+Model: NB          
+  > Best Run: binding-nb-032621-F8-Mavuika
+  > Metrics:  F1: 0.9759 | Recall: 1.0000 | Prec: 0.9530
+  > Setup:    {'oversample': 1, 'has_pca': False, 'class_weight': '{0: 1.0, 1: 1.0}', 'has_synthetic': False, 'w0': 1.0, 'w1': 1.0}
+  > Consistency: Mean F1 of 0.9759 over 1 runs
+Model: SVM         
+  > Best Run: binding-svm-060521-F13-Kazuha
+  > Metrics:  F1: 0.9763 | Recall: 1.0000 | Prec: 0.9537
+  > Setup:    {'oversample': 2, 'has_pca': True, 'class_weight': '{0: 2.0, 1: 1.0}', 'has_synthetic': False, 'w0': 1.0, 'w1': 1.0}
+  > Consistency: Mean F1 of 0.9763 over 1 runs
+Model: DEEP_NN     
+  > Best Run: binding-deepNn-092521-F0-Xipe
+  > Metrics:  F1: 0.9759 | Recall: 1.0000 | Prec: 0.9530
+  > Setup:    {'oversample': 1, 'class_weight': "{'0': 1, '1': 1}", 'w0': 1.0, 'w1': 1.0}
+  > Consistency: Mean F1 of 0.9759 over 8 runs
+

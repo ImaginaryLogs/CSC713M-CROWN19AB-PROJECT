@@ -35,6 +35,13 @@ Please install `uv` pack manager [UV DOCS](https://docs.astral.sh/uv/).
 
 `uv sync`
 
+Then, please add your wandb api key in a .env in the root directory.
+
+Afterwards, run the scripts. Please run:
+
+- `PYTHONPATH=. uv run python -u scripts/classical/train_ml.py`
+- `PYTHONPATH=. uv run python -u scripts/deep_ml/train_ml.py`
+
 ## File Structure
 
 ```txt
@@ -68,7 +75,6 @@ root/
 │   └── model_configs/       # Hyperparameters for different models
 │       ├── mlp.yaml
 │       ├── deep_cnn.yaml
-│       └── quantum_hybrid.yaml
 ├── notebooks/                # Jupyter Notebooks for exploration
 │   └── eda.ipynb
 ├── tests/                   # Unit tests

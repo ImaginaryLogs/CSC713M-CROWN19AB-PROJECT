@@ -32,6 +32,7 @@ class DeepMlClassifier(L.LightningModule):
                  width=constants_training.DEFAUTL_DEEPML_WIDTH, 
                  dropout=constants_training.DEFAUTL_DEEPML_DROPOUT,
                  lr: float = constants_training.DEFAULT_LR,
+                 class_weight=None,
                  weight_decay: float = constants_training.DEFAULT_WEIGHT_DECAY
     ):
         super().__init__()
@@ -51,7 +52,14 @@ class DeepMlClassifier(L.LightningModule):
             
         self.encoder = nn.Sequential(*layers)
         self.head = nn.Linear(curr_dim, 1) # Final Classification
-        self.loss_fn = nn.BCEWithLogitsLoss()
+        if class_weight:
+            w0 = class_weight.get(0, 1.0)
+            w1 = class_weight.get(1, 1.0)
+            pos_weight_val = torch.tensor([w1 / w0])
+        else:
+            pos_weight_val = torch.tensor([1.0])
+        self.register_buffer("pos_weight", pos_weight_val)
+        self.loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight_val)
         self.lr = lr
         self.weight_decay = weight_decay
         self.dropout = dropout
@@ -74,6 +82,8 @@ class DeepMlClassifier(L.LightningModule):
         self.test_metrics = self.val_metrics.clone(prefix="test_")
         self.test_preds: list[torch.Tensor] = []
         self.test_targets: list[torch.Tensor] = []
+        self.save_hyperparameters()
+        
     
     def extra_repr(self) -> str:
         return (
@@ -89,21 +99,22 @@ class DeepMlClassifier(L.LightningModule):
         return x.squeeze(1)
 
     def training_step(self, 
-                      batch: tuple[torch.Tensor, torch.Tensor],
+                      batch ,
                       batch_idx: int):
-        x, y_true = batch
-        y_pred = self(x)
+        x, y_true, _ = batch
+        y_logits = self(x)
         
-        loss = self.loss_fn(y_pred, y_true.float())
+        loss = self.loss_fn(y_logits, y_true.float())
         self.log("train_loss", loss, prog_bar=True)
-        self.train_metrics(y_pred, y_true)
+        y_prob = torch.sigmoid(y_logits)
+        self.train_metrics(y_prob, y_true)
         self.log_dict(self.train_metrics, prog_bar=True, on_step=False, on_epoch=True)
         return loss
     
     def validation_step(
-        self, batch: tuple[torch.Tensor, torch.Tensor], batch_idx: int
+        self, batch, batch_idx: int
     ) -> torch.Tensor:
-        x, y = batch
+        x, y, _ = batch
         y_hat = self(x)
         loss = self.loss_fn(y_hat, y.float())
 
@@ -114,9 +125,9 @@ class DeepMlClassifier(L.LightningModule):
         return loss
     
     def test_step(
-        self, batch: tuple[torch.Tensor, torch.Tensor], batch_idx: int
+        self, batch, batch_idx: int
     ) -> torch.Tensor:
-        x, y = batch
+        x, y, _ = batch
         logits = self(x)
         loss = self.loss_fn(logits, y.float())
 
